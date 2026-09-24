@@ -22,6 +22,48 @@
     padding: 14px;
   }
   .container { max-width: 850px; margin: 0 auto; }
+  
+  /* PIN Lock Screen */
+  #pinLockScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #0f172a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+  .pin-box {
+    background: white;
+    padding: 30px 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    text-align: center;
+    max-width: 320px;
+    width: 90%;
+  }
+  .pin-box h3 { margin-top: 0; color: var(--primary); }
+  .pin-input {
+    width: 100%;
+    font-size: 1.5rem;
+    letter-spacing: 12px;
+    text-align: center;
+    padding: 10px;
+    margin-top: 15px;
+    box-sizing: border-box;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+  }
+  .pin-error {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-top: 10px;
+    display: none;
+  }
+
   h2 {
     text-align: center;
     color: var(--primary);
@@ -32,6 +74,25 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+  }
+  .btn-outline:hover { background: #e0f2fe; }
+
   .card {
     background: var(--card);
     border-radius: 10px;
@@ -139,12 +200,30 @@
 </head>
 <body>
 
-<div class="container">
-  <h2>
-    <span id="cloudStatusDot" class="status-dot"></span>
-    Aquaculture Farm Cloud Tracker
-    <span id="cloudStatusText" style="font-size: 0.8rem; font-weight: normal; color: #ef4444;">(જોડાઈ રહ્યું છે...)</span>
-  </h2>
+<!-- PIN LOCK SCREEN -->
+<div id="pinLockScreen">
+  <div class="pin-box">
+    <h3>સુરક્ષા લૉક (Security Lock)</h3>
+    <p style="font-size:0.85rem; color:#64748b; margin:0;">ખોલવા માટે 4 આંકડાનો PIN નાખો</p>
+    <input type="password" id="inputPin" class="pin-input" maxlength="4" placeholder="••••" autofocus onkeypress="if(event.key === 'Enter') unlockApp()">
+    <div id="pinError" class="pin-error">ખોટો PIN! ફરી પ્રયત્ન કરો.</div>
+    <button onclick="unlockApp()" style="margin-top:16px;">લૉગિન કરો (Unlock)</button>
+  </div>
+</div>
+
+<!-- MAIN APP CONTAINER -->
+<div class="container" id="mainApp" style="display:none;">
+  <div class="header-bar">
+    <div style="font-size: 0.85rem; color: #64748b;">
+      <span id="cloudStatusDot" class="status-dot"></span>
+      <span id="cloudStatusText">(જોડાઈ રહ્યું છે...)</span>
+    </div>
+    <div>
+      <button class="btn-outline" onclick="changePinDialog()">🔐 PIN બદલો (Change PIN)</button>
+    </div>
+  </div>
+
+  <h2>Aquaculture Farm Cloud Tracker</h2>
 
   <!-- ૧. પોન્ડ ઉમેરો -->
   <div class="card">
@@ -212,7 +291,6 @@
   <div class="card">
     <div class="card-title">
       <span>૩. ડોઝ હિસ્ટ્રી (Dose History)</span>
-      <!-- જૂના કલ્ચર ફિલ્ટર -->
       <div style="display:flex; align-items:center; gap:6px; font-size:0.85rem;">
         <label style="margin:0; font-weight:normal;">કલ્ચર પસંદ કરો (Select Culture):</label>
         <select id="filterCropSelect" onchange="renderFilteredHistory()" style="width:auto; padding:4px 8px; font-size:0.85rem;"></select>
@@ -254,7 +332,52 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // રીઅલ-ટાઇમ ક્લાઉડ કનેક્શન સ્ટેટસ મોનિટર
+  // =================== PIN મેનેજમેન્ટ (Cloud Synced) ===================
+  let currentAppPin = "1234";
+
+  db.ref('settings/appPin').on('value', (snap) => {
+    if (snap.exists()) {
+      currentAppPin = snap.val().toString();
+    } else {
+      db.ref('settings/appPin').set("1234");
+    }
+  });
+
+  function unlockApp() {
+    const entered = document.getElementById("inputPin").value;
+    const err = document.getElementById("pinError");
+    if (entered === currentAppPin) {
+      document.getElementById("pinLockScreen").style.display = "none";
+      document.getElementById("mainApp").style.display = "block";
+    } else {
+      err.style.display = "block";
+      document.getElementById("inputPin").value = "";
+    }
+  }
+
+  function changePinDialog() {
+    const oldP = prompt("હાલનો (જૂનો) PIN દાખલ કરો:");
+    if (oldP === null) return;
+    if (oldP !== currentAppPin) {
+      alert("જૂનો PIN ખોટો છે!");
+      return;
+    }
+
+    const newP = prompt("નવો 4 આંકડાનો PIN દાખલ કરો:");
+    if (!newP || newP.trim().length !== 4 || isNaN(newP)) {
+      alert("નવો PIN બરાબર 4 આંકડા (Numbers) નો જ હોવો જોઈએ!");
+      return;
+    }
+
+    db.ref('settings/appPin').set(newP.trim())
+      .then(() => {
+        alert("નવો PIN સફળતાપૂર્વક સેટ થઈ ગયો: " + newP);
+      })
+      .catch((e) => alert("Error: " + e.message));
+  }
+  // =====================================================================
+
+  // Cloud status listener
   const connectedRef = db.ref(".info/connected");
   connectedRef.on("value", (snap) => {
     const dot = document.getElementById("cloudStatusDot");
@@ -275,7 +398,6 @@
 
   document.getElementById('doseDate').valueAsDate = new Date();
 
-  // Stocking Date પરથી "Crop - Mon YYYY" નામ બનાવવું
   function getCropNameFromDate(dateStr) {
     if (!dateStr) return "Crop";
     const d = new Date(dateStr);
@@ -283,14 +405,12 @@
     return `Crop - ${months[d.getMonth()]} ${d.getFullYear()}`;
   }
 
-  // પોન્ડ લિસ્ટ લોડ કરવું
   db.ref('ponds').on('value', (snapshot) => {
     livePonds = snapshot.val() || {};
     updatePondDropdown();
     loadPondDetails();
   });
 
-  // ડોઝ રેકોર્ડ્સ લોડ કરવા
   db.ref('records').on('value', (snapshot) => {
     const data = snapshot.val();
     liveRecords = [];
@@ -308,7 +428,7 @@
     const name = document.getElementById('pondName').value.trim();
     const sDate = document.getElementById('stockDate').value;
     if (!name || !sDate) {
-      alert("પોન્ડનું નામ અને સ્ટોકિંગ તારીખ બંને ભરો (Please fill both fields).");
+      alert("પોન્ડનું નામ અને સ્ટોકિંગ તારીખ બંને ભરો.");
       return;
     }
     
@@ -399,10 +519,8 @@
     document.getElementById('infoStockDate').innerText = livePonds[pond].stockingDate;
     calculateCurrentDOC();
 
-    // કલ્ચર ફિલ્ટર અપડેટ કરવું અને DEFAULT Current Crop સિલેક્ટ કરવું
     updateCropFilterDropdown(pond, currentTag);
 
-    // ચાલુ કલ્ચરનો છેલ્લો ડોઝ બતાવવો
     const currentCropRecords = liveRecords.filter(r => r.pond === pond && (r.cropTag === currentTag || !r.cropTag));
     updateLastDoses(currentCropRecords);
 
@@ -416,13 +534,11 @@
 
     const cropList = livePonds[pond].allCrops || [currentTag];
 
-    // ડિફોલ્ટ ઓપ્શન: Current Culture
     let currentOpt = document.createElement('option');
     currentOpt.value = currentTag;
     currentOpt.innerText = `${currentTag} (Current Culture)`;
     select.appendChild(currentOpt);
 
-    // જૂના કલ્ચર્સ
     cropList.forEach(tag => {
       if (tag !== currentTag) {
         let opt = document.createElement('option');
@@ -432,13 +548,11 @@
       }
     });
 
-    // ઓલ કલ્ચર્સ ઓપ્શન
     let allOpt = document.createElement('option');
     allOpt.value = "all";
     allOpt.innerText = "બધા કલ્ચર્સ (All Cultures)";
     select.appendChild(allOpt);
 
-    // ડિફોલ્ટ રીતે ચાલુ કલ્ચર જ પસંદ રહેશે
     if (currentVal && (currentVal === 'all' || cropList.includes(currentVal))) {
       select.value = currentVal;
     } else {
@@ -484,11 +598,11 @@
     const potash = document.getElementById('dosePotash').value.trim();
 
     if (!pond || !date) {
-      alert("પોન્ડ અને તારીખ બંને પસંદ કરો (Select Pond and Date).");
+      alert("પોન્ડ અને તારીખ બંને પસંદ કરો.");
       return;
     }
     if (!probiotic && !mineral && !mg && !potash) {
-      alert("ઓછામાં ઓછા એક ઘટકનો ડોઝ લખો (Enter at least one dose).");
+      alert("ઓછામાં ઓછા એક ઘટકનો ડોઝ લખો.");
       return;
     }
 
@@ -510,7 +624,7 @@
       document.getElementById('doseMineral').value = '';
       document.getElementById('doseMg').value = '';
       document.getElementById('dosePotash').value = '';
-      alert("ડોઝ ક્લાઉડ પર સેવ થઈ ગયો (Dose Saved to Cloud)!");
+      alert("ડોઝ ક્લાઉડ પર સેવ થઈ ગયો!");
     }).catch(e => alert("Error: " + e.message));
   }
 
@@ -518,7 +632,7 @@
     const tbody = document.getElementById('historyBody');
     tbody.innerHTML = '';
     if (records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">પસંદ કરેલા કલ્ચરમાં કોઈ રેકોર્ડ નથી (No Records Found)</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">પસંદ કરેલા કલ્ચરમાં કોઈ રેકોર્ડ નથી</td></tr>';
       return;
     }
     [...records].reverse().forEach(r => {
@@ -538,10 +652,10 @@
   }
 
   function deleteRecord(recordId) {
-    if (confirm("શું તમારે આ ડોઝ રેકોર્ડ કાયમ માટે ડિલીટ કરવો છે? (Delete this record?)")) {
+    if (confirm("શું તમારે આ ડોઝ રેકોર્ડ કાયમ માટે ડિલીટ કરવો છે?")) {
       db.ref('records/' + recordId).remove()
         .then(() => {
-          alert("રેકોર્ડ ડિલીટ થઈ ગયો (Record Deleted)!");
+          alert("રેકોર્ડ ડિલીટ થઈ ગયો!");
         })
         .catch((error) => {
           alert("Error: " + error.message);
