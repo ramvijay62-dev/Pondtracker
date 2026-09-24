@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aquaculture Multi-Crop Tracker</title>
+<!-- Firebase Core, DB ane Auth Libraries -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
   :root {
     --primary: #0284c7;
@@ -23,253 +25,212 @@
   }
   .container { max-width: 850px; margin: 0 auto; }
   
-  /* PIN Lock Screen */
-  #pinLockScreen {
+  /* Auth Screen Styling */
+  #authOverlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0; width: 100%; height: 100%;
     background-color: #0f172a;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: flex; justify-content: center; align-items: center;
     z-index: 9999;
   }
-  .pin-box {
+  .auth-card {
     background: white;
-    padding: 30px 24px;
+    padding: 26px 20px;
     border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    text-align: center;
-    max-width: 320px;
+    max-width: 360px;
     width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   }
-  .pin-box h3 { margin-top: 0; color: var(--primary); }
-  .pin-input {
-    width: 100%;
-    font-size: 1.5rem;
-    letter-spacing: 12px;
-    text-align: center;
-    padding: 10px;
-    margin-top: 15px;
-    box-sizing: border-box;
-    border: 2px solid var(--border);
-    border-radius: 8px;
+  .auth-card h3 { margin: 0 0 14px 0; color: var(--primary); text-align: center; }
+  .auth-tabs { display: flex; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; }
+  .auth-tab {
+    flex: 1; padding: 8px; text-align: center; font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; color: #64748b;
   }
-  .pin-error {
-    color: var(--danger);
-    font-size: 0.85rem;
-    margin-top: 10px;
-    display: none;
-  }
+  .auth-tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+  .auth-card input { margin-bottom: 12px; }
 
+  /* App Headers */
   h2 {
-    text-align: center;
-    color: var(--primary);
-    margin: 10px 0 16px 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 8px;
+    text-align: center; color: var(--primary); margin: 6px 0 16px 0;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
   }
   .header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: white; padding: 10px 14px; border-radius: 8px;
+    margin-bottom: 14px; border: 1px solid var(--border);
   }
-  .btn-outline {
-    background: transparent;
-    border: 1px solid var(--primary);
-    color: var(--primary);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    width: auto;
-    margin: 0;
+  .btn-logout {
+    background: transparent; border: 1px solid var(--danger); color: var(--danger);
+    padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; width: auto; margin: 0;
   }
-  .btn-outline:hover { background: #e0f2fe; }
+  .btn-logout:hover { background: #fee2e2; }
 
   .card {
-    background: var(--card);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    border: 1px solid var(--border);
+    background: var(--card); border-radius: 10px; padding: 16px;
+    margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border);
   }
   .card-title {
-    font-size: 1.05rem;
-    font-weight: 600;
-    margin-bottom: 12px;
-    border-bottom: 2px solid #e2e8f0;
-    padding-bottom: 6px;
-    color: var(--dark);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
+    font-size: 1.05rem; font-weight: 600; margin-bottom: 12px;
+    border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; color: var(--dark);
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
   }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
   label { display: block; font-weight: 500; margin-bottom: 5px; font-size: 0.85rem; }
   input, select {
-    width: 100%;
-    padding: 9px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    box-sizing: border-box;
-    font-size: 0.95rem;
+    width: 100%; padding: 9px; border: 1px solid var(--border);
+    border-radius: 6px; box-sizing: border-box; font-size: 0.95rem;
   }
   button {
-    background-color: var(--primary);
-    color: white;
-    padding: 11px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    width: 100%;
-    margin-top: 12px;
+    background-color: var(--primary); color: white; padding: 11px;
+    border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 12px;
   }
   button:hover { background-color: #0369a1; }
   .btn-warning {
-    background-color: #eab308;
-    color: #000;
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    width: auto;
-    margin: 0;
+    background-color: #eab308; color: #000; padding: 6px 12px;
+    font-size: 0.8rem; width: auto; margin: 0;
   }
   .btn-delete {
-    background-color: var(--danger);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 4px 8px;
-    cursor: pointer;
-    font-weight: bold;
-    width: auto;
-    margin: 0;
-    font-size: 0.85rem;
+    background-color: var(--danger); color: white; border: none; border-radius: 4px;
+    padding: 4px 8px; cursor: pointer; font-weight: bold; width: auto; margin: 0; font-size: 0.85rem;
   }
-  .btn-delete:hover { background-color: #dc2626; }
   .stats-badge {
-    background: #e0f2fe;
-    color: #0369a1;
-    padding: 10px;
-    border-radius: 6px;
-    margin-top: 12px;
-    font-size: 0.9rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
+    background: #e0f2fe; color: #0369a1; padding: 10px; border-radius: 6px;
+    margin-top: 12px; font-size: 0.9rem; display: flex; justify-content: space-between;
+    align-items: center; flex-wrap: wrap; gap: 8px;
   }
   .last-dose-box {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;
   }
   .dose-item {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 10px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px;
   }
   .dose-item span { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 3px; }
   .dose-item strong { font-size: 0.9rem; color: #0f172a; word-break: break-word; }
+  
   table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
   th, td { padding: 8px 6px; border: 1px solid var(--border); text-align: left; }
   th { background-color: #f8fafc; }
+  
+  /* User Tooltip Popup */
+  .user-badge {
+    display: inline-block; cursor: pointer; position: relative;
+    background: #e2e8f0; border-radius: 4px; padding: 2px 6px; font-size: 0.75rem;
+  }
+  .tooltip-box {
+    visibility: hidden; position: absolute; bottom: 125%; left: 50%;
+    transform: translateX(-50%); background-color: #1e293b; color: #fff;
+    text-align: center; padding: 6px 10px; border-radius: 6px;
+    font-size: 0.75rem; white-space: nowrap; z-index: 10;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25); opacity: 0; transition: opacity 0.2s;
+  }
+  .tooltip-box::after {
+    content: ""; position: absolute; top: 100%; left: 50%;
+    margin-left: -5px; border-width: 5px; border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+  }
+  .user-badge:hover .tooltip-box, .user-badge:focus .tooltip-box {
+    visibility: visible; opacity: 1;
+  }
+
   .status-dot {
-    display: inline-block;
-    width: 11px;
-    height: 11px;
-    background: #ef4444;
-    border-radius: 50%;
-    transition: background-color 0.3s ease;
+    display: inline-block; width: 10px; height: 10px;
+    background: #ef4444; border-radius: 50%;
   }
 </style>
 </head>
 <body>
 
-<!-- PIN LOCK SCREEN -->
-<div id="pinLockScreen">
-  <div class="pin-box">
-    <h3>સુરક્ષા લૉક (Security Lock)</h3>
-    <p style="font-size:0.85rem; color:#64748b; margin:0;">ખોલવા માટે 4 આંકડાનો PIN નાખો</p>
-    <input type="password" id="inputPin" class="pin-input" maxlength="4" placeholder="••••" autofocus onkeypress="if(event.key === 'Enter') unlockApp()">
-    <div id="pinError" class="pin-error">ખોટો PIN! ફરી પ્રયત્ન કરો.</div>
-    <button onclick="unlockApp()" style="margin-top:16px;">લૉગિન કરો (Unlock)</button>
+<!-- AUTH OVERLAY (Sign Up, Login, Forgot Password) -->
+<div id="authOverlay">
+  <div class="auth-card">
+    <h3>Aquaculture Tracker</h3>
+    <div class="auth-tabs">
+      <div id="tabLogin" class="auth-tab active" onclick="switchAuthTab('login')">Login</div>
+      <div id="tabSignup" class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</div>
+    </div>
+
+    <!-- Sign Up Name Field -->
+    <div id="signupNameGroup" style="display:none;">
+      <label>Tamaru Pura Naam (Full Name):</label>
+      <input type="text" id="authName" placeholder="e.g. Ramesh Bhai">
+    </div>
+
+    <label>Email Address:</label>
+    <input type="email" id="authEmail" placeholder="example@gmail.com">
+
+    <div id="authPassGroup">
+      <label>Password:</label>
+      <input type="password" id="authPassword" placeholder="••••••••">
+    </div>
+
+    <button id="authSubmitBtn" onclick="handleAuthSubmit()">Login Karo</button>
+
+    <div style="text-align:center; margin-top:12px;">
+      <a href="javascript:void(0)" onclick="handleForgotPassword()" style="font-size:0.8rem; color:var(--primary); text-decoration:none;">Password Bhulai Gayo? (Forgot Password)</a>
+    </div>
   </div>
 </div>
 
 <!-- MAIN APP CONTAINER -->
 <div class="container" id="mainApp" style="display:none;">
   <div class="header-bar">
-    <div style="font-size: 0.85rem; color: #64748b;">
+    <div style="font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:6px;">
       <span id="cloudStatusDot" class="status-dot"></span>
-      <span id="cloudStatusText">(જોડાઈ રહ્યું છે...)</span>
+      <span id="cloudStatusText">(Connecting...)</span> | 
+      👤 <strong><span id="displayUserName">User</span></strong>
     </div>
-    <div>
-      <button class="btn-outline" onclick="changePinDialog()">🔐 PIN બદલો (Change PIN)</button>
-    </div>
+    <button class="btn-logout" onclick="logoutUser()">Logout</button>
   </div>
 
   <h2>Aquaculture Farm Cloud Tracker</h2>
 
-  <!-- ૧. પોન્ડ ઉમેરો -->
+  <!-- 1. Pond Add -->
   <div class="card">
-    <div class="card-title">૧. પોન્ડ ઉમેરો (Add Pond)</div>
+    <div class="card-title">1. Pond Umero (Add Pond)</div>
     <div class="grid-2">
       <div>
-        <label>પોન્ડનું નામ / નંબર (Pond Name):</label>
-        <input type="text" id="pondName" placeholder="દા.ત. Pond 1">
+        <label>Pond Name / Number:</label>
+        <input type="text" id="pondName" placeholder="Pond 1">
       </div>
       <div>
-        <label>સ્ટોકિંગ તારીખ (Stocking Date):</label>
+        <label>Stocking Date:</label>
         <input type="date" id="stockDate">
       </div>
     </div>
-    <button onclick="addPondCloud()">પોન્ડ ક્લાઉડ પર સેવ કરો (Save Pond)</button>
+    <button onclick="addPondCloud()">Pond Cloud Par Save Karo</button>
   </div>
 
-  <!-- ૨. ડોઝ એન્ટ્રી -->
+  <!-- 2. Dose Entry -->
   <div class="card">
     <div class="card-title">
-      <span>૨. ડોઝ એન્ટ્રી (Dose Record Application)</span>
+      <span>2. Dose Entry (Record Application)</span>
     </div>
     <div class="grid-2">
       <div>
-        <label>પોન્ડ પસંદ કરો (Select Pond):</label>
+        <label>Pond Select Karo:</label>
         <select id="selectedPond" onchange="loadPondDetails()"></select>
       </div>
       <div>
-        <label>ડોઝ આપ્યાની તારીખ (Dose Date):</label>
+        <label>Dose Apvani Date:</label>
         <input type="date" id="doseDate" onchange="calculateCurrentDOC()">
       </div>
     </div>
 
-    <!-- લાઇવ સ્ટેટસ & હાર્વેસ્ટ બટન -->
+    <!-- Status & New Crop -->
     <div id="pondInfo" class="stats-badge" style="display:none;">
       <div>
         <strong><span id="cropBatchText">Crop</span></strong> | 
-        સ્ટોકિંગ તારીખ: <span id="infoStockDate">-</span> | 
+        Stocking Date: <span id="infoStockDate">-</span> | 
         <strong>DOC: <span id="currentDOC">0</span></strong>
       </div>
-      <button class="btn-warning" onclick="startNewCrop()">હાર્વેસ્ટ પછી નવું કલ્ચર (Start New Culture)</button>
+      <button class="btn-warning" onclick="startNewCrop()">Harvest Pachi Navu Culture</button>
     </div>
 
-    <!-- છેલ્લો ડોઝ લાઈવ બોક્સ -->
+    <!-- Last Dose Details -->
     <div id="lastDoseSection" style="display:none;">
-      <div style="font-weight:600; font-size:0.85rem; margin-top:12px;">આ કલ્ચરમાં છેલ્લો ડોઝ ક્યારે આપેલો હતો? (Last Dose Details):</div>
+      <div style="font-weight:600; font-size:0.85rem; margin-top:12px;">Aa Culture Ma Chhello Dose (Last Dose Details):</div>
       <div class="last-dose-box">
         <div class="dose-item"><span>Probiotic</span><strong id="lastProbiotic">-</strong></div>
         <div class="dose-item"><span>Mineral Mix</span><strong id="lastMineral">-</strong></div>
@@ -279,20 +240,20 @@
     </div>
 
     <div class="grid-4" style="margin-top:14px;">
-      <div><label>Probiotic (gm/kg/Ltr):</label><input type="text" id="doseProbiotic" placeholder="દા.ત. 500 gm"></div>
-      <div><label>Minerals Mix (kg):</label><input type="text" id="doseMineral" placeholder="દા.ત. 10 kg"></div>
-      <div><label>Magnesium (kg):</label><input type="text" id="doseMg" placeholder="દા.ત. 25 kg"></div>
-      <div><label>Potash (kg):</label><input type="text" id="dosePotash" placeholder="દા.ત. 20 kg"></div>
+      <div><label>Probiotic (gm/kg/Ltr):</label><input type="text" id="doseProbiotic" placeholder="500 gm"></div>
+      <div><label>Minerals Mix (kg):</label><input type="text" id="doseMineral" placeholder="10 kg"></div>
+      <div><label>Magnesium (kg):</label><input type="text" id="doseMg" placeholder="25 kg"></div>
+      <div><label>Potash (kg):</label><input type="text" id="dosePotash" placeholder="20 kg"></div>
     </div>
-    <button onclick="saveDoseCloud()">ડોઝ ક્લાઉડ પર સેવ કરો (Save Dose)</button>
+    <button onclick="saveDoseCloud()">Dose Cloud Par Save Karo</button>
   </div>
 
-  <!-- ૩. ડોઝ હિસ્ટ્રી -->
+  <!-- 3. Dose History Table -->
   <div class="card">
     <div class="card-title">
-      <span>૩. ડોઝ હિસ્ટ્રી (Dose History)</span>
+      <span>3. Dose History</span>
       <div style="display:flex; align-items:center; gap:6px; font-size:0.85rem;">
-        <label style="margin:0; font-weight:normal;">કલ્ચર પસંદ કરો (Select Culture):</label>
+        <label style="margin:0; font-weight:normal;">Culture Select Karo:</label>
         <select id="filterCropSelect" onchange="renderFilteredHistory()" style="width:auto; padding:4px 8px; font-size:0.85rem;"></select>
       </div>
     </div>
@@ -300,18 +261,19 @@
       <table>
         <thead>
           <tr>
-            <th>કલ્ચર (Culture)</th>
-            <th>તારીખ (Date)</th>
+            <th>Crop</th>
+            <th>Date</th>
             <th>DOC</th>
             <th>Probiotic</th>
             <th>Minerals</th>
             <th>Magnesium</th>
             <th>Potash</th>
+            <th>Added By (Hover)</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="8" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Record)</td></tr>
+          <tr><td colspan="9" style="text-align:center;">Koi record nathi</td></tr>
         </tbody>
       </table>
     </div>
@@ -331,72 +293,135 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+  const auth = firebase.auth();
 
-  // =================== PIN મેનેજમેન્ટ (Cloud Synced) ===================
-  let currentAppPin = "1234";
-
-  db.ref('settings/appPin').on('value', (snap) => {
-    if (snap.exists()) {
-      currentAppPin = snap.val().toString();
-    } else {
-      db.ref('settings/appPin').set("1234");
-    }
-  });
-
-  function unlockApp() {
-    const entered = document.getElementById("inputPin").value;
-    const err = document.getElementById("pinError");
-    if (entered === currentAppPin) {
-      document.getElementById("pinLockScreen").style.display = "none";
-      document.getElementById("mainApp").style.display = "block";
-    } else {
-      err.style.display = "block";
-      document.getElementById("inputPin").value = "";
-    }
-  }
-
-  function changePinDialog() {
-    const oldP = prompt("હાલનો (જૂનો) PIN દાખલ કરો:");
-    if (oldP === null) return;
-    if (oldP !== currentAppPin) {
-      alert("જૂનો PIN ખોટો છે!");
-      return;
-    }
-
-    const newP = prompt("નવો 4 આંકડાનો PIN દાખલ કરો:");
-    if (!newP || newP.trim().length !== 4 || isNaN(newP)) {
-      alert("નવો PIN બરાબર 4 આંકડા (Numbers) નો જ હોવો જોઈએ!");
-      return;
-    }
-
-    db.ref('settings/appPin').set(newP.trim())
-      .then(() => {
-        alert("નવો PIN સફળતાપૂર્વક સેટ થઈ ગયો: " + newP);
-      })
-      .catch((e) => alert("Error: " + e.message));
-  }
-  // =====================================================================
-
-  // Cloud status listener
-  const connectedRef = db.ref(".info/connected");
-  connectedRef.on("value", (snap) => {
-    const dot = document.getElementById("cloudStatusDot");
-    const text = document.getElementById("cloudStatusText");
-    if (snap.val() === true) {
-      dot.style.backgroundColor = "#22c55e";
-      text.innerText = "(Cloud Online)";
-      text.style.color = "#16a34a";
-    } else {
-      dot.style.backgroundColor = "#ef4444";
-      text.innerText = "(Offline / No Internet)";
-      text.style.color = "#dc2626";
-    }
-  });
-
+  let activeAuthMode = 'login';
+  let currentUserProfile = null;
   let livePonds = {};
   let liveRecords = [];
 
   document.getElementById('doseDate').valueAsDate = new Date();
+
+  // Auth Status Monitor
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      currentUserProfile = {
+        uid: user.uid,
+        email: user.email,
+        name: user.displayName || user.email.split('@')[0]
+      };
+      document.getElementById("displayUserName").innerText = currentUserProfile.name;
+      document.getElementById("authOverlay").style.display = "none";
+      document.getElementById("mainApp").style.display = "block";
+      initAppData();
+    } else {
+      currentUserProfile = null;
+      document.getElementById("authOverlay").style.display = "flex";
+      document.getElementById("mainApp").style.display = "none";
+    }
+  });
+
+  function switchAuthTab(mode) {
+    activeAuthMode = mode;
+    const tabL = document.getElementById("tabLogin");
+    const tabS = document.getElementById("tabSignup");
+    const nameGrp = document.getElementById("signupNameGroup");
+    const submitBtn = document.getElementById("authSubmitBtn");
+
+    if (mode === 'signup') {
+      tabS.classList.add('active');
+      tabL.classList.remove('active');
+      nameGrp.style.display = 'block';
+      submitBtn.innerText = "Naveen Account Banao (Sign Up)";
+    } else {
+      tabL.classList.add('active');
+      tabS.classList.remove('active');
+      nameGrp.style.display = 'none';
+      submitBtn.innerText = "Login Karo";
+    }
+  }
+
+  function handleAuthSubmit() {
+    const email = document.getElementById("authEmail").value.trim();
+    const pass = document.getElementById("authPassword").value;
+    const name = document.getElementById("authName").value.trim();
+
+    if (!email || !pass) {
+      alert("Email ane Password banne jaruri che.");
+      return;
+    }
+
+    if (activeAuthMode === 'signup') {
+      if (!name) { alert("Tamaru naam lakho."); return; }
+      auth.createUserWithEmailAndPassword(email, pass)
+        .then((res) => {
+          return res.user.updateProfile({ displayName: name });
+        })
+        .then(() => {
+          alert("Account banavi lidhu! Swagat che, " + name);
+        })
+        .catch((e) => alert("Sign Up Error: " + e.message));
+    } else {
+      auth.signInWithEmailAndPassword(email, pass)
+        .catch((e) => alert("Login Error: " + e.message));
+    }
+  }
+
+  function handleForgotPassword() {
+    const email = prompt("Tamaro Registered Email Address lakho jema reset link mokalvi hoy:");
+    if (email) {
+      auth.sendPasswordResetEmail(email.trim())
+        .then(() => {
+          alert("Password reset email mokli didhi che! Tamaru Gmail inbox/spam check karo.");
+        })
+        .catch((e) => alert("Error: " + e.message));
+    }
+  }
+
+  function logoutUser() {
+    if (confirm("Shu tamare Logout thavu che?")) {
+      auth.signOut();
+    }
+  }
+
+  function initAppData() {
+    // Cloud connection status
+    const connectedRef = db.ref(".info/connected");
+    connectedRef.on("value", (snap) => {
+      const dot = document.getElementById("cloudStatusDot");
+      const text = document.getElementById("cloudStatusText");
+      if (snap.val() === true) {
+        dot.style.backgroundColor = "#22c55e";
+        text.innerText = "(Cloud Online)";
+        text.style.color = "#16a34a";
+      } else {
+        dot.style.backgroundColor = "#ef4444";
+        text.innerText = "(Offline / No Internet)";
+        text.style.color = "#dc2626";
+      }
+    });
+
+    // Ponds listener
+    db.ref('ponds').on('value', (snapshot) => {
+      livePonds = snapshot.val() || {};
+      updatePondDropdown();
+      loadPondDetails();
+    });
+
+    // Records listener
+    db.ref('records').on('value', (snapshot) => {
+      const data = snapshot.val();
+      liveRecords = [];
+      if (data) {
+        Object.keys(data).forEach(key => {
+          let r = data[key];
+          r.id = key;
+          liveRecords.push(r);
+        });
+      }
+      loadPondDetails();
+    });
+  }
 
   function getCropNameFromDate(dateStr) {
     if (!dateStr) return "Crop";
@@ -405,35 +430,14 @@
     return `Crop - ${months[d.getMonth()]} ${d.getFullYear()}`;
   }
 
-  db.ref('ponds').on('value', (snapshot) => {
-    livePonds = snapshot.val() || {};
-    updatePondDropdown();
-    loadPondDetails();
-  });
-
-  db.ref('records').on('value', (snapshot) => {
-    const data = snapshot.val();
-    liveRecords = [];
-    if (data) {
-      Object.keys(data).forEach(key => {
-        let r = data[key];
-        r.id = key;
-        liveRecords.push(r);
-      });
-    }
-    loadPondDetails();
-  });
-
   function addPondCloud() {
     const name = document.getElementById('pondName').value.trim();
     const sDate = document.getElementById('stockDate').value;
     if (!name || !sDate) {
-      alert("પોન્ડનું નામ અને સ્ટોકિંગ તારીખ બંને ભરો.");
+      alert("Pond name ane Stocking date banne lakho.");
       return;
     }
-    
     const cropTag = getCropNameFromDate(sDate);
-
     db.ref('ponds/' + name).set({
       stockingDate: sDate,
       currentCropTag: cropTag,
@@ -441,7 +445,7 @@
     }).then(() => {
       document.getElementById('pondName').value = '';
       document.getElementById('stockDate').value = '';
-      alert(name + " (" + cropTag + ") ક્લાઉડ પર ઉમેરાઈ ગયો!");
+      alert(name + " (" + cropTag + ") save thai gayo!");
     }).catch(e => alert("Error: " + e.message));
   }
 
@@ -449,21 +453,18 @@
     const pond = document.getElementById('selectedPond').value;
     if (!pond || !livePonds[pond]) return;
 
-    const newDate = prompt(`${pond} માટે હાર્વેસ્ટ પછી નવા કલ્ચરની નવી સ્ટોકિંગ તારીખ નાખો (YYYY-MM-DD):`, new Date().toISOString().split('T')[0]);
-
+    const newDate = prompt(`${pond} mate harvest pachi navi Stocking Date nakho (YYYY-MM-DD):`, new Date().toISOString().split('T')[0]);
     if (newDate) {
       const newCropTag = getCropNameFromDate(newDate);
       let cropList = livePonds[pond].allCrops || [];
-      if (!cropList.includes(newCropTag)) {
-        cropList.push(newCropTag);
-      }
+      if (!cropList.includes(newCropTag)) cropList.push(newCropTag);
 
       db.ref('ponds/' + pond).update({
         stockingDate: newDate,
         currentCropTag: newCropTag,
         allCrops: cropList
       }).then(() => {
-        alert(`${pond} માં ${newCropTag} સફળતાપૂર્વક શરૂ થઈ ગયું! જૂનો ડેટા આર્કાઇવ રહેશે અને નવો DOC 0 થી શરૂ થશે.`);
+        alert(`${pond} ma ${newCropTag} sharu thai gayu!`);
       }).catch(e => alert("Error: " + e.message));
     }
   }
@@ -471,7 +472,7 @@
   function updatePondDropdown() {
     const dropdown = document.getElementById('selectedPond');
     const currentVal = dropdown.value;
-    dropdown.innerHTML = '<option value="">-- પોન્ડ પસંદ કરો (Select Pond) --</option>';
+    dropdown.innerHTML = '<option value="">-- Pond Select Karo --</option>';
     for (let p in livePonds) {
       let opt = document.createElement('option');
       opt.value = p;
@@ -485,8 +486,7 @@
     if (!stockDateStr || !targetDateStr) return 0;
     const start = new Date(stockDateStr);
     const target = new Date(targetDateStr);
-    const diffTime = target - start;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil((target - start) / (1000 * 60 * 60 * 24));
     return diffDays >= 0 ? diffDays : 0;
   }
 
@@ -512,7 +512,6 @@
     }
 
     const currentTag = livePonds[pond].currentCropTag || getCropNameFromDate(livePonds[pond].stockingDate);
-    
     infoSection.style.display = "flex";
     lastDoseSec.style.display = "block";
     document.getElementById('cropBatchText').innerText = currentTag + " (Current Culture)";
@@ -523,7 +522,6 @@
 
     const currentCropRecords = liveRecords.filter(r => r.pond === pond && (r.cropTag === currentTag || !r.cropTag));
     updateLastDoses(currentCropRecords);
-
     renderFilteredHistory();
   }
 
@@ -548,120 +546,4 @@
       }
     });
 
-    let allOpt = document.createElement('option');
-    allOpt.value = "all";
-    allOpt.innerText = "બધા કલ્ચર્સ (All Cultures)";
-    select.appendChild(allOpt);
-
-    if (currentVal && (currentVal === 'all' || cropList.includes(currentVal))) {
-      select.value = currentVal;
-    } else {
-      select.value = currentTag;
-    }
-  }
-
-  function renderFilteredHistory() {
-    const pond = document.getElementById('selectedPond').value;
-    if (!pond) return;
-
-    const selectedFilter = document.getElementById('filterCropSelect').value;
-    let pondRecords = liveRecords.filter(r => r.pond === pond);
-
-    if (selectedFilter !== 'all') {
-      pondRecords = pondRecords.filter(r => (r.cropTag === selectedFilter || (!r.cropTag && selectedFilter === getCropNameFromDate(livePonds[pond].stockingDate))));
-    }
-
-    renderHistory(pondRecords);
-  }
-
-  function updateLastDoses(records) {
-    let lastP = "-", lastM = "-", lastMg = "-", lastK = "-";
-    for (let i = records.length - 1; i >= 0; i--) {
-      let r = records[i];
-      if (r.probiotic && lastP === "-") lastP = `${r.probiotic} (DOC ${r.doc}, ${r.date})`;
-      if (r.mineral && lastM === "-") lastM = `${r.mineral} (DOC ${r.doc}, ${r.date})`;
-      if (r.mg && lastMg === "-") lastMg = `${r.mg} (DOC ${r.doc}, ${r.date})`;
-      if (r.potash && lastK === "-") lastK = `${r.potash} (DOC ${r.doc}, ${r.date})`;
-    }
-    document.getElementById('lastProbiotic').innerText = lastP;
-    document.getElementById('lastMineral').innerText = lastM;
-    document.getElementById('lastMg').innerText = lastMg;
-    document.getElementById('lastPotash').innerText = lastK;
-  }
-
-  function saveDoseCloud() {
-    const pond = document.getElementById('selectedPond').value;
-    const date = document.getElementById('doseDate').value;
-    const probiotic = document.getElementById('doseProbiotic').value.trim();
-    const mineral = document.getElementById('doseMineral').value.trim();
-    const mg = document.getElementById('doseMg').value.trim();
-    const potash = document.getElementById('dosePotash').value.trim();
-
-    if (!pond || !date) {
-      alert("પોન્ડ અને તારીખ બંને પસંદ કરો.");
-      return;
-    }
-    if (!probiotic && !mineral && !mg && !potash) {
-      alert("ઓછામાં ઓછા એક ઘટકનો ડોઝ લખો.");
-      return;
-    }
-
-    const currentTag = livePonds[pond]?.currentCropTag || getCropNameFromDate(livePonds[pond]?.stockingDate);
-    const doc = calculateDOC(livePonds[pond]?.stockingDate, date);
-
-    db.ref('records').push({
-      pond: pond,
-      cropTag: currentTag,
-      date: date,
-      doc: doc,
-      probiotic: probiotic,
-      mineral: mineral,
-      mg: mg,
-      potash: potash,
-      timestamp: Date.now()
-    }).then(() => {
-      document.getElementById('doseProbiotic').value = '';
-      document.getElementById('doseMineral').value = '';
-      document.getElementById('doseMg').value = '';
-      document.getElementById('dosePotash').value = '';
-      alert("ડોઝ ક્લાઉડ પર સેવ થઈ ગયો!");
-    }).catch(e => alert("Error: " + e.message));
-  }
-
-  function renderHistory(records) {
-    const tbody = document.getElementById('historyBody');
-    tbody.innerHTML = '';
-    if (records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">પસંદ કરેલા કલ્ચરમાં કોઈ રેકોર્ડ નથી</td></tr>';
-      return;
-    }
-    [...records].reverse().forEach(r => {
-      let tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong style="color:var(--primary);">${r.cropTag || 'Crop'}</strong></td>
-        <td>${r.date}</td>
-        <td><strong>${r.doc}</strong></td>
-        <td>${r.probiotic || '-'}</td>
-        <td>${r.mineral || '-'}</td>
-        <td>${r.mg || '-'}</td>
-        <td>${r.potash || '-'}</td>
-        <td><button class="btn-delete" title="આ ખોટો રેકોર્ડ કાઢી નાખો" onclick="deleteRecord('${r.id}')">✖</button></td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function deleteRecord(recordId) {
-    if (confirm("શું તમારે આ ડોઝ રેકોર્ડ કાયમ માટે ડિલીટ કરવો છે?")) {
-      db.ref('records/' + recordId).remove()
-        .then(() => {
-          alert("રેકોર્ડ ડિલીટ થઈ ગયો!");
-        })
-        .catch((error) => {
-          alert("Error: " + error.message);
-        });
-    }
-  }
-</script>
-</body>
-</html>
+    let allOpt = document.createEleme
