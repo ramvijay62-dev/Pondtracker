@@ -27,7 +27,7 @@
   }
   .container { max-width: 850px; margin: 0 auto; }
 
-  /* Auth Container Screen */
+  /* Auth Screen */
   #authScreen {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -228,6 +228,16 @@
     white-space: nowrap;
     font-weight: 500;
   }
+  .pond-tag {
+    background: #dbeafe;
+    color: #1e40af;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-block;
+    white-space: nowrap;
+  }
   .status-dot {
     display: inline-block;
     width: 10px;
@@ -351,9 +361,9 @@
   <!-- ૩. ડોઝ હિસ્ટ્રી Table -->
   <div class="card">
     <div class="card-title">
-      <span>૩. ડોઝ હિસ્ટ્રી (Dose History)</span>
+      <span id="historyTitleText">૩. ડોઝ હિસ્ટ્રી - બધા પોન્ડનું ચાલુ કલ્ચર (All Ponds Current Culture)</span>
       <div style="display:flex; align-items:center; gap:6px; font-size:0.85rem;">
-        <label style="margin:0; font-weight:normal;">કલ્ચર પસંદ કરો:</label>
+        <label id="filterLabel" style="margin:0; font-weight:normal;">કલ્ચર ફિલ્ટર:</label>
         <select id="filterCropSelect" onchange="renderFilteredHistory()" style="width:auto; padding:4px 8px; font-size:0.85rem;"></select>
       </div>
     </div>
@@ -361,6 +371,7 @@
       <table>
         <thead>
           <tr>
+            <th>પોન્ડ (Pond)</th>
             <th>કલ્ચર (Culture)</th>
             <th>તારીખ (Date)</th>
             <th>DOC</th>
@@ -373,7 +384,7 @@
           </tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="9" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Record)</td></tr>
+          <tr><td colspan="10" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Record)</td></tr>
         </tbody>
       </table>
     </div>
@@ -565,7 +576,7 @@
   function updatePondDropdown() {
     const dropdown = document.getElementById('selectedPond');
     const currentVal = dropdown.value;
-    dropdown.innerHTML = '<option value="">-- પોન્ડ પસંદ કરો (Select Pond) --</option>';
+    dropdown.innerHTML = '<option value="">-- બધા પોન્ડ (All Ponds) --</option>';
     for (let p in livePonds) {
       let opt = document.createElement('option');
       opt.value = p;
@@ -592,21 +603,35 @@
     }
   }
 
+  // પોન્ડ બદલાય ત્યારે અથવા ડેટા અપડેટ થાય ત્યારે
   function loadPondDetails() {
     const pond = document.getElementById('selectedPond').value;
     const infoSection = document.getElementById('pondInfo');
     const lastDoseSec = document.getElementById('lastDoseSection');
+    const filterSelect = document.getElementById('filterCropSelect');
+    const titleText = document.getElementById('historyTitleText');
 
+    // ૧. ડિફોલ્ટ: કોઈ પોન્ડ પસંદ નથી (બધા પોન્ડના Current Crop ની હિસ્ટ્રી બતાવવી)
     if (!pond || !livePonds[pond]) {
       infoSection.style.display = "none";
       lastDoseSec.style.display = "none";
-      renderHistory([]);
+      titleText.innerText = "૩. ડોઝ હિસ્ટ્રી - બધા પોન્ડનું ચાલુ કલ્ચર (All Ponds Current Culture)";
+
+      // ફિલ્ટર ડ્રોપડાઉનમાં બધા પોન્ડના ઓપ્શન
+      filterSelect.innerHTML = `
+        <option value="all_current">બધા પોન્ડ (Current Culture)</option>
+        <option value="all_everything">બધો રેકોર્ડ (All History)</option>
+      `;
+
+      renderAllPondsCurrentCrop();
       return;
     }
 
+    // ૨. કોઈ ચોક્કસ પોન્ડ સિલેક્ટ કર્યો છે
     const currentTag = livePonds[pond].currentCropTag || getCropNameFromDate(livePonds[pond].stockingDate);
     infoSection.style.display = "flex";
     lastDoseSec.style.display = "block";
+    titleText.innerText = `૩. ડોઝ હિસ્ટ્રી - ${pond}`;
     document.getElementById('cropBatchText').innerText = currentTag + " (Current Culture)";
     document.getElementById('infoStockDate').innerText = livePonds[pond].stockingDate;
     calculateCurrentDOC();
@@ -618,9 +643,28 @@
     renderFilteredHistory();
   }
 
+  // ડિફોલ્ટ વ્યૂ: બધા પોન્ડના Current Culture રેકોર્ડ્સ
+  function renderAllPondsCurrentCrop() {
+    const filterVal = document.getElementById('filterCropSelect').value;
+
+    let filtered = [];
+    if (filterVal === 'all_everything') {
+      filtered = liveRecords;
+    } else {
+      // ફક્ત તેવા રેકોર્ડ્સ જે જે-તે પોન્ડના Current Crop સાથે મેચ થતા હોય
+      filtered = liveRecords.filter(r => {
+        const pondInfo = livePonds[r.pond];
+        if (!pondInfo) return false;
+        const pondCurTag = pondInfo.currentCropTag || getCropNameFromDate(pondInfo.stockingDate);
+        return r.cropTag === pondCurTag || (!r.cropTag && r.date >= pondInfo.stockingDate);
+      });
+    }
+
+    renderHistory(filtered);
+  }
+
   function updateCropFilterDropdown(pond, currentTag) {
     const select = document.getElementById('filterCropSelect');
-    const currentVal = select.value;
     select.innerHTML = '';
     const cropList = livePonds[pond].allCrops || [currentTag];
 
@@ -640,19 +684,20 @@
 
     let allOpt = document.createElement('option');
     allOpt.value = "all";
-    allOpt.innerText = "બધા કલ્ચર્સ (All Cultures)";
+    allOpt.innerText = "બધા કલ્ચર્સ (All Crops)";
     select.appendChild(allOpt);
 
-    if (currentVal && (currentVal === 'all' || cropList.includes(currentVal))) {
-      select.value = currentVal;
-    } else {
-      select.value = currentTag;
-    }
+    // ડિફોલ્ટ હંમેશા Current Culture પર રહેશે
+    select.value = currentTag;
   }
 
   function renderFilteredHistory() {
     const pond = document.getElementById('selectedPond').value;
-    if (!pond) return;
+    if (!pond) {
+      renderAllPondsCurrentCrop();
+      return;
+    }
+
     const selectedFilter = document.getElementById('filterCropSelect').value;
     let pondRecords = liveRecords.filter(r => r.pond === pond);
 
@@ -719,7 +764,7 @@
     const tbody = document.getElementById('historyBody');
     tbody.innerHTML = '';
     if (records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Records Found)</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Records Found)</td></tr>';
       return;
     }
     [...records].reverse().forEach(r => {
@@ -727,6 +772,7 @@
       const author = r.addedByName ? `👤 ${r.addedByName} (${r.addedAtTime || ''})` : "-";
 
       tr.innerHTML = `
+        <td><span class="pond-tag">${r.pond || '-'}</span></td>
         <td><strong style="color:var(--primary);">${r.cropTag || 'Crop'}</strong></td>
         <td>${r.date}</td>
         <td><strong>${r.doc}</strong></td>
