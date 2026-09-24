@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquaculture Multi-Crop Tracker</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --primary: #0284c7;
+    --dark: #0f172a;
+    --border: #cbd5e1;
+    --card: #ffffff;
+    --danger: #ef4444;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #f1f5f9;
+    color: #1e293b;
+    margin: 0;
+    padding: 14px;
+  }
+  .container { max-width: 850px; margin: 0 auto; }
+  h2 {
+    text-align: center;
+    color: var(--primary);
+    margin: 10px 0 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border: 1px solid var(--border);
+  }
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 6px;
+    color: var(--dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  label { display: block; font-weight: 500; margin-bottom: 5px; font-size: 0.85rem; }
+  input, select {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 0.95rem;
+  }
+  button {
+    background-color: var(--primary);
+    color: white;
+    padding: 11px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    width: 100%;
+    margin-top: 12px;
+  }
+  button:hover { background-color: #0369a1; }
+  .btn-warning {
+    background-color: #eab308;
+    color: #000;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    width: auto;
+    margin: 0;
+  }
+  .btn-delete {
+    background-color: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-weight: bold;
+    width: auto;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  .btn-delete:hover { background-color: #dc2626; }
+  .stats-badge {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .last-dose-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .dose-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .dose-item span { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 3px; }
+  .dose-item strong { font-size: 0.9rem; color: #0f172a; word-break: break-word; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+  th, td { padding: 8px 6px; border: 1px solid var(--border); text-align: left; }
+  th { background-color: #f8fafc; }
+  .status-dot {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    background: #ef4444;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>
+    <span id="cloudStatusDot" class="status-dot"></span>
+    Aquaculture Farm Cloud Tracker
+    <span id="cloudStatusText" style="font-size: 0.8rem; font-weight: normal; color: #ef4444;">(જોડાઈ રહ્યું છે...)</span>
+  </h2>
+
+  <!-- ૧. પોન્ડ ઉમેરો -->
+  <div class="card">
+    <div class="card-title">૧. પોન્ડ ઉમેરો (Add Pond)</div>
+    <div class="grid-2">
+      <div>
+        <label>પોન્ડનું નામ / નંબર (Pond Name):</label>
+        <input type="text" id="pondName" placeholder="દા.ત. Pond 1">
+      </div>
+      <div>
+        <label>સ્ટોકિંગ તારીખ (Stocking Date):</label>
+        <input type="date" id="stockDate">
+      </div>
+    </div>
+    <button onclick="addPondCloud()">પોન્ડ ક્લાઉડ પર સેવ કરો (Save Pond)</button>
+  </div>
+
+  <!-- ૨. ડોઝ એન્ટ્રી -->
+  <div class="card">
+    <div class="card-title">
+      <span>૨. ડોઝ એન્ટ્રી (Dose Record Application)</span>
+    </div>
+    <div class="grid-2">
+      <div>
+        <label>પોન્ડ પસંદ કરો (Select Pond):</label>
+        <select id="selectedPond" onchange="loadPondDetails()"></select>
+      </div>
+      <div>
+        <label>ડોઝ આપ્યાની તારીખ (Dose Date):</label>
+        <input type="date" id="doseDate" onchange="calculateCurrentDOC()">
+      </div>
+    </div>
+
+    <!-- લાઇવ સ્ટેટસ & હાર્વેસ્ટ બટન -->
+    <div id="pondInfo" class="stats-badge" style="display:none;">
+      <div>
+        <strong><span id="cropBatchText">Crop</span></strong> | 
+        સ્ટોકિંગ તારીખ: <span id="infoStockDate">-</span> | 
+        <strong>DOC: <span id="currentDOC">0</span></strong>
+      </div>
+      <button class="btn-warning" onclick="startNewCrop()">હાર્વેસ્ટ પછી નવું કલ્ચર (Start New Culture)</button>
+    </div>
+
+    <!-- છેલ્લો ડોઝ લાઈવ બોક્સ -->
+    <div id="lastDoseSection" style="display:none;">
+      <div style="font-weight:600; font-size:0.85rem; margin-top:12px;">આ કલ્ચરમાં છેલ્લો ડોઝ ક્યારે આપેલો હતો? (Last Dose Details):</div>
+      <div class="last-dose-box">
+        <div class="dose-item"><span>Probiotic</span><strong id="lastProbiotic">-</strong></div>
+        <div class="dose-item"><span>Mineral Mix</span><strong id="lastMineral">-</strong></div>
+        <div class="dose-item"><span>Magnesium (Mg)</span><strong id="lastMg">-</strong></div>
+        <div class="dose-item"><span>Potash (K)</span><strong id="lastPotash">-</strong></div>
+      </div>
+    </div>
+
+    <div class="grid-4" style="margin-top:14px;">
+      <div><label>Probiotic (gm/kg/Ltr):</label><input type="text" id="doseProbiotic" placeholder="દા.ત. 500 gm"></div>
+      <div><label>Minerals Mix (kg):</label><input type="text" id="doseMineral" placeholder="દા.ત. 10 kg"></div>
+      <div><label>Magnesium (kg):</label><input type="text" id="doseMg" placeholder="દા.ત. 25 kg"></div>
+      <div><label>Potash (kg):</label><input type="text" id="dosePotash" placeholder="દા.ત. 20 kg"></div>
+    </div>
+    <button onclick="saveDoseCloud()">ડોઝ ક્લાઉડ પર સેવ કરો (Save Dose)</button>
+  </div>
+
+  <!-- ૩. ડોઝ હિસ્ટ્રી -->
+  <div class="card">
+    <div class="card-title">
+      <span>૩. ડોઝ હિસ્ટ્રી (Dose History)</span>
+      <!-- જૂના કલ્ચર ફિલ્ટર -->
+      <div style="display:flex; align-items:center; gap:6px; font-size:0.85rem;">
+        <label style="margin:0; font-weight:normal;">કલ્ચર પસંદ કરો (Select Culture):</label>
+        <select id="filterCropSelect" onchange="renderFilteredHistory()" style="width:auto; padding:4px 8px; font-size:0.85rem;"></select>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>કલ્ચર (Culture)</th>
+            <th>તારીખ (Date)</th>
+            <th>DOC</th>
+            <th>Probiotic</th>
+            <th>Minerals</th>
+            <th>Magnesium</th>
+            <th>Potash</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="8" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Record)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBl0Pl4Z41P17y1eap9VIGwtn8jJc3Matc",
+    authDomain: "farm-tracker-6e938.firebaseapp.com",
+    databaseURL: "https://farm-tracker-6e938-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "farm-tracker-6e938",
+    storageBucket: "farm-tracker-6e938.firebasestorage.app",
+    messagingSenderId: "881461425664",
+    appId: "1:881461425664:web:f92ce543895dc127624ae5"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // રીઅલ-ટાઇમ ક્લાઉડ કનેક્શન સ્ટેટસ મોનિટર
+  const connectedRef = db.ref(".info/connected");
+  connectedRef.on("value", (snap) => {
+    const dot = document.getElementById("cloudStatusDot");
+    const text = document.getElementById("cloudStatusText");
+    if (snap.val() === true) {
+      dot.style.backgroundColor = "#22c55e";
+      text.innerText = "(Cloud Online)";
+      text.style.color = "#16a34a";
+    } else {
+      dot.style.backgroundColor = "#ef4444";
+      text.innerText = "(Offline / No Internet)";
+      text.style.color = "#dc2626";
+    }
+  });
+
+  let livePonds = {};
+  let liveRecords = [];
+
+  document.getElementById('doseDate').valueAsDate = new Date();
+
+  // Stocking Date પરથી "Crop - Mon YYYY" નામ બનાવવું
+  function getCropNameFromDate(dateStr) {
+    if (!dateStr) return "Crop";
+    const d = new Date(dateStr);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `Crop - ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  // પોન્ડ લિસ્ટ લોડ કરવું
+  db.ref('ponds').on('value', (snapshot) => {
+    livePonds = snapshot.val() || {};
+    updatePondDropdown();
+    loadPondDetails();
+  });
+
+  // ડોઝ રેકોર્ડ્સ લોડ કરવા
+  db.ref('records').on('value', (snapshot) => {
+    const data = snapshot.val();
+    liveRecords = [];
+    if (data) {
+      Object.keys(data).forEach(key => {
+        let r = data[key];
+        r.id = key;
+        liveRecords.push(r);
+      });
+    }
+    loadPondDetails();
+  });
+
+  function addPondCloud() {
+    const name = document.getElementById('pondName').value.trim();
+    const sDate = document.getElementById('stockDate').value;
+    if (!name || !sDate) {
+      alert("પોન્ડનું નામ અને સ્ટોકિંગ તારીખ બંને ભરો (Please fill both fields).");
+      return;
+    }
+    
+    const cropTag = getCropNameFromDate(sDate);
+
+    db.ref('ponds/' + name).set({
+      stockingDate: sDate,
+      currentCropTag: cropTag,
+      allCrops: [cropTag]
+    }).then(() => {
+      document.getElementById('pondName').value = '';
+      document.getElementById('stockDate').value = '';
+      alert(name + " (" + cropTag + ") ક્લાઉડ પર ઉમેરાઈ ગયો!");
+    }).catch(e => alert("Error: " + e.message));
+  }
+
+  function startNewCrop() {
+    const pond = document.getElementById('selectedPond').value;
+    if (!pond || !livePonds[pond]) return;
+
+    const newDate = prompt(`${pond} માટે હાર્વેસ્ટ પછી નવા કલ્ચરની નવી સ્ટોકિંગ તારીખ નાખો (YYYY-MM-DD):`, new Date().toISOString().split('T')[0]);
+
+    if (newDate) {
+      const newCropTag = getCropNameFromDate(newDate);
+      let cropList = livePonds[pond].allCrops || [];
+      if (!cropList.includes(newCropTag)) {
+        cropList.push(newCropTag);
+      }
+
+      db.ref('ponds/' + pond).update({
+        stockingDate: newDate,
+        currentCropTag: newCropTag,
+        allCrops: cropList
+      }).then(() => {
+        alert(`${pond} માં ${newCropTag} સફળતાપૂર્વક શરૂ થઈ ગયું! જૂનો ડેટા આર્કાઇવ રહેશે અને નવો DOC 0 થી શરૂ થશે.`);
+      }).catch(e => alert("Error: " + e.message));
+    }
+  }
+
+  function updatePondDropdown() {
+    const dropdown = document.getElementById('selectedPond');
+    const currentVal = dropdown.value;
+    dropdown.innerHTML = '<option value="">-- પોન્ડ પસંદ કરો (Select Pond) --</option>';
+    for (let p in livePonds) {
+      let opt = document.createElement('option');
+      opt.value = p;
+      opt.innerText = p;
+      if (p === currentVal) opt.selected = true;
+      dropdown.appendChild(opt);
+    }
+  }
+
+  function calculateDOC(stockDateStr, targetDateStr) {
+    if (!stockDateStr || !targetDateStr) return 0;
+    const start = new Date(stockDateStr);
+    const target = new Date(targetDateStr);
+    const diffTime = target - start;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 ? diffDays : 0;
+  }
+
+  function calculateCurrentDOC() {
+    const pond = document.getElementById('selectedPond').value;
+    const doseDate = document.getElementById('doseDate').value;
+    if (pond && livePonds[pond]) {
+      const doc = calculateDOC(livePonds[pond].stockingDate, doseDate);
+      document.getElementById('currentDOC').innerText = doc;
+    }
+  }
+
+  function loadPondDetails() {
+    const pond = document.getElementById('selectedPond').value;
+    const infoSection = document.getElementById('pondInfo');
+    const lastDoseSec = document.getElementById('lastDoseSection');
+
+    if (!pond || !livePonds[pond]) {
+      infoSection.style.display = "none";
+      lastDoseSec.style.display = "none";
+      renderHistory([]);
+      return;
+    }
+
+    const currentTag = livePonds[pond].currentCropTag || getCropNameFromDate(livePonds[pond].stockingDate);
+    
+    infoSection.style.display = "flex";
+    lastDoseSec.style.display = "block";
+    document.getElementById('cropBatchText').innerText = currentTag + " (Current Culture)";
+    document.getElementById('infoStockDate').innerText = livePonds[pond].stockingDate;
+    calculateCurrentDOC();
+
+    // કલ્ચર ફિલ્ટર અપડેટ કરવું અને DEFAULT Current Crop સિલેક્ટ કરવું
+    updateCropFilterDropdown(pond, currentTag);
+
+    // ચાલુ કલ્ચરનો છેલ્લો ડોઝ બતાવવો
+    const currentCropRecords = liveRecords.filter(r => r.pond === pond && (r.cropTag === currentTag || !r.cropTag));
+    updateLastDoses(currentCropRecords);
+
+    renderFilteredHistory();
+  }
+
+  function updateCropFilterDropdown(pond, currentTag) {
+    const select = document.getElementById('filterCropSelect');
+    const currentVal = select.value;
+    select.innerHTML = '';
+
+    const cropList = livePonds[pond].allCrops || [currentTag];
+
+    // ડિફોલ્ટ ઓપ્શન: Current Culture
+    let currentOpt = document.createElement('option');
+    currentOpt.value = currentTag;
+    currentOpt.innerText = `${currentTag} (Current Culture)`;
+    select.appendChild(currentOpt);
+
+    // જૂના કલ્ચર્સ
+    cropList.forEach(tag => {
+      if (tag !== currentTag) {
+        let opt = document.createElement('option');
+        opt.value = tag;
+        opt.innerText = `${tag} (Previous Culture)`;
+        select.appendChild(opt);
+      }
+    });
+
+    // ઓલ કલ્ચર્સ ઓપ્શન
+    let allOpt = document.createElement('option');
+    allOpt.value = "all";
+    allOpt.innerText = "બધા કલ્ચર્સ (All Cultures)";
+    select.appendChild(allOpt);
+
+    // ડિફોલ્ટ રીતે ચાલુ કલ્ચર જ પસંદ રહેશે
+    if (currentVal && (currentVal === 'all' || cropList.includes(currentVal))) {
+      select.value = currentVal;
+    } else {
+      select.value = currentTag;
+    }
+  }
+
+  function renderFilteredHistory() {
+    const pond = document.getElementById('selectedPond').value;
+    if (!pond) return;
+
+    const selectedFilter = document.getElementById('filterCropSelect').value;
+    let pondRecords = liveRecords.filter(r => r.pond === pond);
+
+    if (selectedFilter !== 'all') {
+      pondRecords = pondRecords.filter(r => (r.cropTag === selectedFilter || (!r.cropTag && selectedFilter === getCropNameFromDate(livePonds[pond].stockingDate))));
+    }
+
+    renderHistory(pondRecords);
+  }
+
+  function updateLastDoses(records) {
+    let lastP = "-", lastM = "-", lastMg = "-", lastK = "-";
+    for (let i = records.length - 1; i >= 0; i--) {
+      let r = records[i];
+      if (r.probiotic && lastP === "-") lastP = `${r.probiotic} (DOC ${r.doc}, ${r.date})`;
+      if (r.mineral && lastM === "-") lastM = `${r.mineral} (DOC ${r.doc}, ${r.date})`;
+      if (r.mg && lastMg === "-") lastMg = `${r.mg} (DOC ${r.doc}, ${r.date})`;
+      if (r.potash && lastK === "-") lastK = `${r.potash} (DOC ${r.doc}, ${r.date})`;
+    }
+    document.getElementById('lastProbiotic').innerText = lastP;
+    document.getElementById('lastMineral').innerText = lastM;
+    document.getElementById('lastMg').innerText = lastMg;
+    document.getElementById('lastPotash').innerText = lastK;
+  }
+
+  function saveDoseCloud() {
+    const pond = document.getElementById('selectedPond').value;
+    const date = document.getElementById('doseDate').value;
+    const probiotic = document.getElementById('doseProbiotic').value.trim();
+    const mineral = document.getElementById('doseMineral').value.trim();
+    const mg = document.getElementById('doseMg').value.trim();
+    const potash = document.getElementById('dosePotash').value.trim();
+
+    if (!pond || !date) {
+      alert("પોન્ડ અને તારીખ બંને પસંદ કરો (Select Pond and Date).");
+      return;
+    }
+    if (!probiotic && !mineral && !mg && !potash) {
+      alert("ઓછામાં ઓછા એક ઘટકનો ડોઝ લખો (Enter at least one dose).");
+      return;
+    }
+
+    const currentTag = livePonds[pond]?.currentCropTag || getCropNameFromDate(livePonds[pond]?.stockingDate);
+    const doc = calculateDOC(livePonds[pond]?.stockingDate, date);
+
+    db.ref('records').push({
+      pond: pond,
+      cropTag: currentTag,
+      date: date,
+      doc: doc,
+      probiotic: probiotic,
+      mineral: mineral,
+      mg: mg,
+      potash: potash,
+      timestamp: Date.now()
+    }).then(() => {
+      document.getElementById('doseProbiotic').value = '';
+      document.getElementById('doseMineral').value = '';
+      document.getElementById('doseMg').value = '';
+      document.getElementById('dosePotash').value = '';
+      alert("ડોઝ ક્લાઉડ પર સેવ થઈ ગયો (Dose Saved to Cloud)!");
+    }).catch(e => alert("Error: " + e.message));
+  }
+
+  function renderHistory(records) {
+    const tbody = document.getElementById('historyBody');
+    tbody.innerHTML = '';
+    if (records.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">પસંદ કરેલા કલ્ચરમાં કોઈ રેકોર્ડ નથી (No Records Found)</td></tr>';
+      return;
+    }
+    [...records].reverse().forEach(r => {
+      let tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong style="color:var(--primary);">${r.cropTag || 'Crop'}</strong></td>
+        <td>${r.date}</td>
+        <td><strong>${r.doc}</strong></td>
+        <td>${r.probiotic || '-'}</td>
+        <td>${r.mineral || '-'}</td>
+        <td>${r.mg || '-'}</td>
+        <td>${r.potash || '-'}</td>
+        <td><button class="btn-delete" title="આ ખોટો રેકોર્ડ કાઢી નાખો" onclick="deleteRecord('${r.id}')">✖</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function deleteRecord(recordId) {
+    if (confirm("શું તમારે આ ડોઝ રેકોર્ડ કાયમ માટે ડિલીટ કરવો છે? (Delete this record?)")) {
+      db.ref('records/' + recordId).remove()
+        .then(() => {
+          alert("રેકોર્ડ ડિલીટ થઈ ગયો (Record Deleted)!");
+        })
+        .catch((error) => {
+          alert("Error: " + error.message);
+        });
+    }
+  }
+</script>
+</body>
+</html>
