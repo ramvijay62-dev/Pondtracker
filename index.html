@@ -75,7 +75,7 @@
     color: white;
   }
   .auth-field { margin-bottom: 12px; text-align: left; }
-  .auth-field label { font-size: 0.82rem; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
+  .auth-field label { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
   .auth-field input {
     width: 100%;
     padding: 11px;
@@ -226,6 +226,7 @@
     font-size: 0.75rem;
     display: inline-block;
     white-space: nowrap;
+    font-weight: 500;
   }
   .status-dot {
     display: inline-block;
@@ -244,30 +245,30 @@
     <h3>Aquaculture Tracker</h3>
     
     <div class="tab-group">
-      <button type="button" id="tabLoginBtn" class="tab-btn active" onclick="switchMode('login')">Login</button>
-      <button type="button" id="tabSignupBtn" class="tab-btn" onclick="switchMode('signup')">Sign Up</button>
+      <button type="button" id="tabLoginBtn" class="tab-btn active" onclick="switchMode('login')">લૉગિન (Login)</button>
+      <button type="button" id="tabSignupBtn" class="tab-btn" onclick="switchMode('signup')">નવું ખાતું (Sign Up)</button>
     </div>
 
     <!-- Sign Up Name Box -->
     <div id="nameRow" class="auth-field" style="display:none;">
-      <label>Tamaru Pura Naam (Full Name):</label>
-      <input type="text" id="inpName" placeholder="e.g. Ramesh Bhai">
+      <label>તમારું પૂરું નામ (Full Name):</label>
+      <input type="text" id="inpName" placeholder="દા.ત. Ramesh Bhai">
     </div>
 
     <div class="auth-field">
-      <label>Email Address:</label>
+      <label>ઈમેઈલ (Email Address):</label>
       <input type="email" id="inpEmail" placeholder="user@gmail.com">
     </div>
 
     <div class="auth-field">
-      <label>Password (Minimum 6 characters):</label>
+      <label>પાસવર્ડ (Password - ઓછામાં ઓછા 6 અક્ષર):</label>
       <input type="password" id="inpPass" placeholder="••••••••">
     </div>
 
-    <button type="button" id="submitAuthBtn" class="btn-primary" onclick="processAuth()">Login Karo</button>
+    <button type="button" id="submitAuthBtn" class="btn-primary" onclick="processAuth()">લૉગિન કરો (Login)</button>
 
     <div style="text-align:center; margin-top:14px;">
-      <a href="javascript:void(0)" onclick="sendForgotPass()" style="font-size:0.8rem; color:var(--primary); text-decoration:none; font-weight:600;">Password Bhulai Gayo? (Forgot Password)</a>
+      <a href="javascript:void(0)" onclick="sendForgotPass()" style="font-size:0.8rem; color:var(--primary); text-decoration:none; font-weight:600;">પાસવર્ડ ભૂલાઈ ગયો? (Forgot Password)</a>
     </div>
   </div>
 </div>
@@ -277,42 +278,42 @@
   <div class="header-bar">
     <div style="font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:6px;">
       <span id="cloudStatusDot" class="status-dot"></span>
-      <span id="cloudStatusText">(Connecting...)</span> | 
+      <span id="cloudStatusText">(જોડાઈ રહ્યું છે...)</span> | 
       👤 <strong><span id="navUserName">User</span></strong>
     </div>
-    <button type="button" class="btn-logout" onclick="userLogout()">Logout</button>
+    <button type="button" class="btn-logout" onclick="userLogout()">લૉગઆઉટ (Logout)</button>
   </div>
 
   <h2>Aquaculture Farm Cloud Tracker</h2>
 
-  <!-- 1. Pond Add -->
+  <!-- ૧. પોન્ડ ઉમેરો -->
   <div class="card">
-    <div class="card-title">1. Pond Umero (Add Pond)</div>
+    <div class="card-title">૧. પોન્ડ ઉમેરો (Add Pond)</div>
     <div class="grid-2">
       <div>
-        <label>Pond Name / Number:</label>
-        <input type="text" id="pondName" placeholder="Pond 1">
+        <label>પોન્ડનું નામ / નંબર (Pond Name):</label>
+        <input type="text" id="pondName" placeholder="દા.ત. Pond 1">
       </div>
       <div>
-        <label>Stocking Date:</label>
+        <label>સ્ટોકિંગ તારીખ (Stocking Date):</label>
         <input type="date" id="stockDate">
       </div>
     </div>
-    <button type="button" class="btn-primary" onclick="addPondCloud()">Pond Cloud Par Save Karo</button>
+    <button type="button" class="btn-primary" onclick="addPondCloud()">પોન્ડ ક્લાઉડ પર સેવ કરો (Save Pond)</button>
   </div>
 
-  <!-- 2. Dose Entry -->
+  <!-- ૨. ડોઝ એન્ટ્રી -->
   <div class="card">
     <div class="card-title">
-      <span>2. Dose Entry (Record Application)</span>
+      <span>૨. ડોઝ એન્ટ્રી (Record Application)</span>
     </div>
     <div class="grid-2">
       <div>
-        <label>Pond Select Karo:</label>
+        <label>પોન્ડ પસંદ કરો (Select Pond):</label>
         <select id="selectedPond" onchange="loadPondDetails()"></select>
       </div>
       <div>
-        <label>Dose Date:</label>
+        <label>ડોઝ આપ્યાની તારીખ (Dose Date):</label>
         <input type="date" id="doseDate" onchange="calculateCurrentDOC()">
       </div>
     </div>
@@ -321,15 +322,15 @@
     <div id="pondInfo" class="stats-badge" style="display:none;">
       <div>
         <strong><span id="cropBatchText">Crop</span></strong> | 
-        Stocking Date: <span id="infoStockDate">-</span> | 
+        સ્ટોકિંગ તારીખ: <span id="infoStockDate">-</span> | 
         <strong>DOC: <span id="currentDOC">0</span></strong>
       </div>
-      <button type="button" class="btn-warning" onclick="startNewCrop()">Harvest Pachi Navu Culture</button>
+      <button type="button" class="btn-warning" onclick="startNewCrop()">હાર્વેસ્ટ પછી નવું કલ્ચર (Start New Culture)</button>
     </div>
 
     <!-- Last Dose Box -->
     <div id="lastDoseSection" style="display:none;">
-      <div style="font-weight:600; font-size:0.85rem; margin-top:12px;">Aa Culture Ma Chhello Dose (Last Dose Details):</div>
+      <div style="font-weight:600; font-size:0.85rem; margin-top:12px;">આ કલ્ચરમાં છેલ્લો ડોઝ ક્યારે આપેલો હતો? (Last Dose Details):</div>
       <div class="last-dose-box">
         <div class="dose-item"><span>Probiotic</span><strong id="lastProbiotic">-</strong></div>
         <div class="dose-item"><span>Mineral Mix</span><strong id="lastMineral">-</strong></div>
@@ -339,20 +340,20 @@
     </div>
 
     <div class="grid-4" style="margin-top:14px;">
-      <div><label>Probiotic (gm/kg/Ltr):</label><input type="text" id="doseProbiotic" placeholder="500 gm"></div>
-      <div><label>Minerals Mix (kg):</label><input type="text" id="doseMineral" placeholder="10 kg"></div>
-      <div><label>Magnesium (kg):</label><input type="text" id="doseMg" placeholder="25 kg"></div>
-      <div><label>Potash (kg):</label><input type="text" id="dosePotash" placeholder="20 kg"></div>
+      <div><label>Probiotic (gm/kg/Ltr):</label><input type="text" id="doseProbiotic" placeholder="દા.ત. 500 gm"></div>
+      <div><label>Minerals Mix (kg):</label><input type="text" id="doseMineral" placeholder="દા.ત. 10 kg"></div>
+      <div><label>Magnesium (kg):</label><input type="text" id="doseMg" placeholder="દા.ત. 25 kg"></div>
+      <div><label>Potash (kg):</label><input type="text" id="dosePotash" placeholder="દા.ત. 20 kg"></div>
     </div>
-    <button type="button" class="btn-primary" onclick="saveDoseCloud()">Dose Cloud Par Save Karo</button>
+    <button type="button" class="btn-primary" onclick="saveDoseCloud()">ડોઝ ક્લાઉડ પર સેવ કરો (Save Dose)</button>
   </div>
 
-  <!-- 3. Dose History Table -->
+  <!-- ૩. ડોઝ હિસ્ટ્રી Table -->
   <div class="card">
     <div class="card-title">
-      <span>3. Dose History</span>
+      <span>૩. ડોઝ હિસ્ટ્રી (Dose History)</span>
       <div style="display:flex; align-items:center; gap:6px; font-size:0.85rem;">
-        <label style="margin:0; font-weight:normal;">Culture:</label>
+        <label style="margin:0; font-weight:normal;">કલ્ચર પસંદ કરો:</label>
         <select id="filterCropSelect" onchange="renderFilteredHistory()" style="width:auto; padding:4px 8px; font-size:0.85rem;"></select>
       </div>
     </div>
@@ -360,19 +361,19 @@
       <table>
         <thead>
           <tr>
-            <th>Culture</th>
-            <th>Date</th>
+            <th>કલ્ચર (Culture)</th>
+            <th>તારીખ (Date)</th>
             <th>DOC</th>
             <th>Probiotic</th>
             <th>Minerals</th>
             <th>Magnesium</th>
             <th>Potash</th>
-            <th>Kone Add Karyu</th>
+            <th>કોણે એડ કર્યું (User)</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="9" style="text-align:center;">Koi record nathi</td></tr>
+          <tr><td colspan="9" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Record)</td></tr>
         </tbody>
       </table>
     </div>
@@ -412,12 +413,12 @@
       btnS.classList.add('active');
       btnL.classList.remove('active');
       nameRow.style.display = 'block';
-      submitBtn.innerText = "Naveen Account Banao (Sign Up)";
+      submitBtn.innerText = "નવું એકાઉન્ટ બનાવો (Sign Up)";
     } else {
       btnL.classList.add('active');
       btnS.classList.remove('active');
       nameRow.style.display = 'none';
-      submitBtn.innerText = "Login Karo";
+      submitBtn.innerText = "લૉગિન કરો (Login)";
     }
   }
 
@@ -446,18 +447,18 @@
     const name = document.getElementById('inpName').value.trim();
 
     if (!email || !pass) {
-      alert("Email ane Password banne jaruri che.");
+      alert("Email અને Password બંને દાખલ કરો.");
       return;
     }
 
     if (curMode === 'signup') {
-      if (!name) { alert("Tamaru puru naam lakho."); return; }
+      if (!name) { alert("તમારું પૂરું નામ લખો."); return; }
       auth.createUserWithEmailAndPassword(email, pass)
         .then((cred) => {
           return cred.user.updateProfile({ displayName: name });
         })
         .then(() => {
-          alert("Account successfully bani gayu! Swagat che, " + name);
+          alert("એકાઉન્ટ સફળતાપૂર્વક બની ગયું! સ્વાગત છે, " + name);
         })
         .catch(err => alert("Sign Up Error: " + err.message));
     } else {
@@ -467,16 +468,16 @@
   }
 
   function sendForgotPass() {
-    const email = prompt("Password reset link mokalva mate registered Email lakho:");
+    const email = prompt("પાસવર્ડ રીસેટ લિંક મેળવવા તમારો ઈમેઈલ નાખો:");
     if (email) {
       auth.sendPasswordResetEmail(email.trim())
-        .then(() => alert("Reset link email par mokli didhi che! Gmail check karo."))
+        .then(() => alert("રીસેટ લિંક ઈમેઈલ પર મોકલી દીધી છે! Gmail ચેક કરો."))
         .catch(err => alert("Error: " + err.message));
     }
   }
 
   function userLogout() {
-    if (confirm("Shu tamare Logout karvu che?")) {
+    if (confirm("શું તમારે લૉગઆઉટ થવું છે?")) {
       auth.signOut();
     }
   }
@@ -528,7 +529,7 @@
     const name = document.getElementById('pondName').value.trim();
     const sDate = document.getElementById('stockDate').value;
     if (!name || !sDate) {
-      alert("Pond name ane Stocking date banne lakho.");
+      alert("પોન્ડનું નામ અને સ્ટોકિંગ તારીખ બંને ભરો.");
       return;
     }
     const cropTag = getCropNameFromDate(sDate);
@@ -539,14 +540,14 @@
     }).then(() => {
       document.getElementById('pondName').value = '';
       document.getElementById('stockDate').value = '';
-      alert(name + " (" + cropTag + ") save thai gayo!");
+      alert(name + " (" + cropTag + ") સેવ થઈ ગયો!");
     }).catch(e => alert("Error: " + e.message));
   }
 
   function startNewCrop() {
     const pond = document.getElementById('selectedPond').value;
     if (!pond || !livePonds[pond]) return;
-    const newDate = prompt(`${pond} mate harvest pachi navi Stocking Date nakho (YYYY-MM-DD):`, new Date().toISOString().split('T')[0]);
+    const newDate = prompt(`${pond} માટે હાર્વેસ્ટ પછી નવી સ્ટોકિંગ તારીખ નાખો (YYYY-MM-DD):`, new Date().toISOString().split('T')[0]);
     if (newDate) {
       const newCropTag = getCropNameFromDate(newDate);
       let cropList = livePonds[pond].allCrops || [];
@@ -556,7 +557,7 @@
         currentCropTag: newCropTag,
         allCrops: cropList
       }).then(() => {
-        alert(`${pond} ma ${newCropTag} sharu thai gayu!`);
+        alert(`${pond} માં ${newCropTag} શરૂ થઈ ગયું!`);
       }).catch(e => alert("Error: " + e.message));
     }
   }
@@ -564,7 +565,7 @@
   function updatePondDropdown() {
     const dropdown = document.getElementById('selectedPond');
     const currentVal = dropdown.value;
-    dropdown.innerHTML = '<option value="">-- Pond Select Karo --</option>';
+    dropdown.innerHTML = '<option value="">-- પોન્ડ પસંદ કરો (Select Pond) --</option>';
     for (let p in livePonds) {
       let opt = document.createElement('option');
       opt.value = p;
@@ -639,7 +640,7 @@
 
     let allOpt = document.createElement('option');
     allOpt.value = "all";
-    allOpt.innerText = "Badha Cultures (All)";
+    allOpt.innerText = "બધા કલ્ચર્સ (All Cultures)";
     select.appendChild(allOpt);
 
     if (currentVal && (currentVal === 'all' || cropList.includes(currentVal))) {
@@ -684,8 +685,8 @@
     const mg = document.getElementById('doseMg').value.trim();
     const potash = document.getElementById('dosePotash').value.trim();
 
-    if (!pond || !date) { alert("Pond ane Date select karo."); return; }
-    if (!probiotic && !mineral && !mg && !potash) { alert("Ochha ma ochho ek dose lakho."); return; }
+    if (!pond || !date) { alert("પોન્ડ અને તારીખ બંને પસંદ કરો."); return; }
+    if (!probiotic && !mineral && !mg && !potash) { alert("ઓછામાં ઓછો એક ડોઝ લખો."); return; }
 
     const currentTag = livePonds[pond]?.currentCropTag || getCropNameFromDate(livePonds[pond]?.stockingDate);
     const doc = calculateDOC(livePonds[pond]?.stockingDate, date);
@@ -710,7 +711,7 @@
       document.getElementById('doseMineral').value = '';
       document.getElementById('doseMg').value = '';
       document.getElementById('dosePotash').value = '';
-      alert("Dose successfully save thai gayo!");
+      alert("ડોઝ સફળતાપૂર્વક સેવ થઈ ગયો (Dose Saved)!");
     }).catch(e => alert("Error: " + e.message));
   }
 
@@ -718,7 +719,7 @@
     const tbody = document.getElementById('historyBody');
     tbody.innerHTML = '';
     if (records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Koi record nathi</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Records Found)</td></tr>';
       return;
     }
     [...records].reverse().forEach(r => {
@@ -734,16 +735,16 @@
         <td>${r.mg || '-'}</td>
         <td>${r.potash || '-'}</td>
         <td><span class="user-pill">${author}</span></td>
-        <td><button class="btn-delete" title="Record delete karo" onclick="deleteRecord('${r.id}')">✖</button></td>
+        <td><button class="btn-delete" title="કાઢી નાખો" onclick="deleteRecord('${r.id}')">✖</button></td>
       `;
       tbody.appendChild(tr);
     });
   }
 
   function deleteRecord(recordId) {
-    if (confirm("Shu tamare aa dose record delete karvo che?")) {
+    if (confirm("શું તમારે આ ડોઝ રેકોર્ડ કાઢી નાખવો છે? (Delete Record?)")) {
       db.ref('records/' + recordId).remove()
-        .then(() => alert("Record delete thai gayo!"))
+        .then(() => alert("રેકોર્ડ ડિલીટ થઈ ગયો!"))
         .catch(e => alert("Error: " + e.message));
     }
   }
