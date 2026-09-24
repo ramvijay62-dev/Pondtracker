@@ -4,10 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aquaculture Multi-Crop Tracker</title>
-<!-- Firebase Core, DB ane Auth Libraries -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
   :root {
     --primary: #0284c7;
@@ -15,6 +13,7 @@
     --border: #cbd5e1;
     --card: #ffffff;
     --danger: #ef4444;
+    --success: #16a34a;
   }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -24,33 +23,35 @@
     padding: 14px;
   }
   .container { max-width: 850px; margin: 0 auto; }
-  
-  /* Auth Screen Styling */
-  #authOverlay {
+
+  /* Login / Request Screen */
+  #authScreen {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background-color: #0f172a;
     display: flex; justify-content: center; align-items: center;
-    z-index: 9999;
+    z-index: 10000;
   }
   .auth-card {
     background: white;
-    padding: 26px 20px;
+    padding: 24px 20px;
     border-radius: 12px;
-    max-width: 360px;
+    max-width: 340px;
     width: 90%;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    text-align: center;
   }
-  .auth-card h3 { margin: 0 0 14px 0; color: var(--primary); text-align: center; }
-  .auth-tabs { display: flex; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; }
-  .auth-tab {
-    flex: 1; padding: 8px; text-align: center; font-weight: 600; font-size: 0.9rem;
-    cursor: pointer; color: #64748b;
+  .auth-card h3 { margin-top: 0; color: var(--primary); }
+  .auth-toggle-box {
+    display: flex; gap: 8px; background: #e2e8f0; padding: 4px; border-radius: 8px; margin-bottom: 14px;
   }
-  .auth-tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+  .auth-toggle-btn {
+    flex: 1; padding: 8px; border: none; border-radius: 6px; background: transparent;
+    color: #475569; font-weight: 600; cursor: pointer; font-size: 0.85rem; margin: 0; width: auto;
+  }
+  .auth-toggle-btn.active { background: var(--primary); color: white; }
   .auth-card input { margin-bottom: 12px; }
 
-  /* App Headers */
   h2 {
     text-align: center; color: var(--primary); margin: 6px 0 16px 0;
     display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -62,9 +63,8 @@
   }
   .btn-logout {
     background: transparent; border: 1px solid var(--danger); color: var(--danger);
-    padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; width: auto; margin: 0;
+    padding: 5px 12px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; width: auto; margin: 0;
   }
-  .btn-logout:hover { background: #fee2e2; }
 
   .card {
     background: var(--card); border-radius: 10px; padding: 16px;
@@ -88,17 +88,19 @@
   }
   button:hover { background-color: #0369a1; }
   .btn-warning {
-    background-color: #eab308; color: #000; padding: 6px 12px;
-    font-size: 0.8rem; width: auto; margin: 0;
+    background-color: #eab308; color: #000; padding: 6px 12px; font-size: 0.8rem; width: auto; margin: 0;
   }
   .btn-delete {
     background-color: var(--danger); color: white; border: none; border-radius: 4px;
     padding: 4px 8px; cursor: pointer; font-weight: bold; width: auto; margin: 0; font-size: 0.85rem;
   }
+  .btn-approve {
+    background-color: var(--success); color: white; border: none; border-radius: 4px;
+    padding: 4px 10px; cursor: pointer; font-weight: bold; width: auto; margin: 0; font-size: 0.8rem;
+  }
   .stats-badge {
     background: #e0f2fe; color: #0369a1; padding: 10px; border-radius: 6px;
-    margin-top: 12px; font-size: 0.9rem; display: flex; justify-content: space-between;
-    align-items: center; flex-wrap: wrap; gap: 8px;
+    margin-top: 12px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
   }
   .last-dose-box {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;
@@ -113,63 +115,35 @@
   th, td { padding: 8px 6px; border: 1px solid var(--border); text-align: left; }
   th { background-color: #f8fafc; }
   
-  /* User Tooltip Popup */
-  .user-badge {
-    display: inline-block; cursor: pointer; position: relative;
-    background: #e2e8f0; border-radius: 4px; padding: 2px 6px; font-size: 0.75rem;
+  .user-tag {
+    background: #e2e8f0; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem; display: inline-block; font-weight: 500;
   }
-  .tooltip-box {
-    visibility: hidden; position: absolute; bottom: 125%; left: 50%;
-    transform: translateX(-50%); background-color: #1e293b; color: #fff;
-    text-align: center; padding: 6px 10px; border-radius: 6px;
-    font-size: 0.75rem; white-space: nowrap; z-index: 10;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.25); opacity: 0; transition: opacity 0.2s;
-  }
-  .tooltip-box::after {
-    content: ""; position: absolute; top: 100%; left: 50%;
-    margin-left: -5px; border-width: 5px; border-style: solid;
-    border-color: #1e293b transparent transparent transparent;
-  }
-  .user-badge:hover .tooltip-box, .user-badge:focus .tooltip-box {
-    visibility: visible; opacity: 1;
-  }
-
   .status-dot {
-    display: inline-block; width: 10px; height: 10px;
-    background: #ef4444; border-radius: 50%;
+    display: inline-block; width: 10px; height: 10px; background: #ef4444; border-radius: 50%;
   }
 </style>
 </head>
 <body>
 
-<!-- AUTH OVERLAY (Sign Up, Login, Forgot Password) -->
-<div id="authOverlay">
+<!-- AUTH SCREEN: LOGIN / REQUEST ACCESS -->
+<div id="authScreen">
   <div class="auth-card">
     <h3>Aquaculture Tracker</h3>
-    <div class="auth-tabs">
-      <div id="tabLogin" class="auth-tab active" onclick="switchAuthTab('login')">Login</div>
-      <div id="tabSignup" class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</div>
+    
+    <div class="auth-toggle-box">
+      <button type="button" id="tabBtnLogin" class="auth-toggle-btn active" onclick="setAuthTab('login')">લૉગિન (Login)</button>
+      <button type="button" id="tabBtnReq" class="auth-toggle-btn" onclick="setAuthTab('request')">નવી રિક્વેસ્ટ (Sign Up)</button>
     </div>
 
-    <!-- Sign Up Name Field -->
-    <div id="signupNameGroup" style="display:none;">
-      <label>Tamaru Pura Naam (Full Name):</label>
-      <input type="text" id="authName" placeholder="e.g. Ramesh Bhai">
-    </div>
+    <label style="text-align:left;">તમારું નામ (User Name):</label>
+    <input type="text" id="authUserName" placeholder="દા.ત. Ramesh Bhai">
 
-    <label>Email Address:</label>
-    <input type="email" id="authEmail" placeholder="example@gmail.com">
+    <label style="text-align:left;">૪ આંકડાનો PIN:</label>
+    <input type="password" id="authUserPin" maxlength="4" placeholder="••••" style="text-align:center; font-size:1.3rem; letter-spacing:8px;">
 
-    <div id="authPassGroup">
-      <label>Password:</label>
-      <input type="password" id="authPassword" placeholder="••••••••">
-    </div>
+    <div id="authMsg" style="font-size:0.85rem; margin-bottom:10px; display:none;"></div>
 
-    <button id="authSubmitBtn" onclick="handleAuthSubmit()">Login Karo</button>
-
-    <div style="text-align:center; margin-top:12px;">
-      <a href="javascript:void(0)" onclick="handleForgotPassword()" style="font-size:0.8rem; color:var(--primary); text-decoration:none;">Password Bhulai Gayo? (Forgot Password)</a>
-    </div>
+    <button type="button" id="authActionBtn" onclick="handleAuthAction()">લૉગિન કરો</button>
   </div>
 </div>
 
@@ -179,41 +153,65 @@
     <div style="font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:6px;">
       <span id="cloudStatusDot" class="status-dot"></span>
       <span id="cloudStatusText">(Connecting...)</span> | 
-      👤 <strong><span id="displayUserName">User</span></strong>
+      👤 <strong><span id="activeUserLabel">User</span></strong>
+      <span id="adminBadge" style="display:none; background:#fef08a; color:#854d0e; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:bold;">ADMIN</span>
     </div>
-    <button class="btn-logout" onclick="logoutUser()">Logout</button>
+    <div style="display:flex; gap:6px;">
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
   </div>
 
   <h2>Aquaculture Farm Cloud Tracker</h2>
 
-  <!-- 1. Pond Add -->
+  <!-- ૦. એડમિન યુઝર મેનેજમેન્ટ પેનલ (માત્ર Admin ને જ દેખાશે) -->
+  <div class="card" id="adminUserPanel" style="display:none; border:2px solid #0284c7;">
+    <div class="card-title" style="color:#0284c7;">
+      <span>👑 Admin Panel: યુઝર એપ્રૂવલ (User Requests)</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>નામ (User)</th>
+            <th>સ્ટેટસ (Status)</th>
+            <th>એક્શન (Action)</th>
+          </tr>
+        </thead>
+        <tbody id="userListBody">
+          <tr><td colspan="3" style="text-align:center;">કોઈ પેન્ડિંગ રિક્વેસ્ટ નથી</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ૧. પોન્ડ ઉમેરો -->
   <div class="card">
-    <div class="card-title">1. Pond Umero (Add Pond)</div>
+    <div class="card-title">૧. પોન્ડ ઉમેરો (Add Pond)</div>
     <div class="grid-2">
       <div>
-        <label>Pond Name / Number:</label>
+        <label>પોન્ડનું નામ / નંબર:</label>
         <input type="text" id="pondName" placeholder="Pond 1">
       </div>
       <div>
-        <label>Stocking Date:</label>
+        <label>સ્ટોકિંગ તારીખ (Stocking Date):</label>
         <input type="date" id="stockDate">
       </div>
     </div>
-    <button onclick="addPondCloud()">Pond Cloud Par Save Karo</button>
+    <button type="button" onclick="addPondCloud()">પોન્ડ ક્લાઉડ પર સેવ કરો</button>
   </div>
 
-  <!-- 2. Dose Entry -->
+  <!-- ૨. ડોઝ એન્ટ્રી -->
   <div class="card">
     <div class="card-title">
-      <span>2. Dose Entry (Record Application)</span>
+      <span>૨. ડોઝ એન્ટ્રી (Record Application)</span>
     </div>
     <div class="grid-2">
       <div>
-        <label>Pond Select Karo:</label>
+        <label>પોન્ડ પસંદ કરો:</label>
         <select id="selectedPond" onchange="loadPondDetails()"></select>
       </div>
       <div>
-        <label>Dose Apvani Date:</label>
+        <label>ડોઝ આપ્યાની તારીખ:</label>
         <input type="date" id="doseDate" onchange="calculateCurrentDOC()">
       </div>
     </div>
@@ -222,15 +220,15 @@
     <div id="pondInfo" class="stats-badge" style="display:none;">
       <div>
         <strong><span id="cropBatchText">Crop</span></strong> | 
-        Stocking Date: <span id="infoStockDate">-</span> | 
+        સ્ટોકિંગ તારીખ: <span id="infoStockDate">-</span> | 
         <strong>DOC: <span id="currentDOC">0</span></strong>
       </div>
-      <button class="btn-warning" onclick="startNewCrop()">Harvest Pachi Navu Culture</button>
+      <button type="button" class="btn-warning" onclick="startNewCrop()">હાર્વેસ્ટ પછી નવું કલ્ચર</button>
     </div>
 
     <!-- Last Dose Details -->
     <div id="lastDoseSection" style="display:none;">
-      <div style="font-weight:600; font-size:0.85rem; margin-top:12px;">Aa Culture Ma Chhello Dose (Last Dose Details):</div>
+      <div style="font-weight:600; font-size:0.85rem; margin-top:12px;">આ કલ્ચરમાં છેલ્લો ડોઝ:</div>
       <div class="last-dose-box">
         <div class="dose-item"><span>Probiotic</span><strong id="lastProbiotic">-</strong></div>
         <div class="dose-item"><span>Mineral Mix</span><strong id="lastMineral">-</strong></div>
@@ -245,15 +243,15 @@
       <div><label>Magnesium (kg):</label><input type="text" id="doseMg" placeholder="25 kg"></div>
       <div><label>Potash (kg):</label><input type="text" id="dosePotash" placeholder="20 kg"></div>
     </div>
-    <button onclick="saveDoseCloud()">Dose Cloud Par Save Karo</button>
+    <button type="button" onclick="saveDoseCloud()">ડોઝ ક્લાઉડ પર સેવ કરો</button>
   </div>
 
-  <!-- 3. Dose History Table -->
+  <!-- ૩. ડોઝ હિસ્ટ્રી Table -->
   <div class="card">
     <div class="card-title">
-      <span>3. Dose History</span>
+      <span>૩. ડોઝ હિસ્ટ્રી</span>
       <div style="display:flex; align-items:center; gap:6px; font-size:0.85rem;">
-        <label style="margin:0; font-weight:normal;">Culture Select Karo:</label>
+        <label style="margin:0; font-weight:normal;">કલ્ચર પસંદ કરો:</label>
         <select id="filterCropSelect" onchange="renderFilteredHistory()" style="width:auto; padding:4px 8px; font-size:0.85rem;"></select>
       </div>
     </div>
@@ -261,19 +259,19 @@
       <table>
         <thead>
           <tr>
-            <th>Crop</th>
-            <th>Date</th>
+            <th>કલ્ચર</th>
+            <th>તારીખ</th>
             <th>DOC</th>
             <th>Probiotic</th>
             <th>Minerals</th>
             <th>Magnesium</th>
             <th>Potash</th>
-            <th>Added By (Hover)</th>
+            <th>કોણે એડ કર્યું</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="9" style="text-align:center;">Koi record nathi</td></tr>
+          <tr><td colspan="9" style="text-align:center;">કોઈ રેકોર્ડ નથી</td></tr>
         </tbody>
       </table>
     </div>
@@ -293,99 +291,169 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  const auth = firebase.auth();
 
-  let activeAuthMode = 'login';
-  let currentUserProfile = null;
+  // ================= ADMIN & USER AUTH CONFIG =================
+  const MASTER_ADMIN_PIN = "9999"; // તમારો સ્પેશિયલ એડમિન માસ્ટર PIN
+  let currentAuthTab = 'login';
+  let activeUser = null;
+  let isAdmin = false;
+
+  let allApprovedUsers = {};
   let livePonds = {};
   let liveRecords = [];
 
   document.getElementById('doseDate').valueAsDate = new Date();
 
-  // Auth Status Monitor
-  auth.onAuthStateChanged((user) => {
-    if (user) {
-      currentUserProfile = {
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName || user.email.split('@')[0]
-      };
-      document.getElementById("displayUserName").innerText = currentUserProfile.name;
-      document.getElementById("authOverlay").style.display = "none";
-      document.getElementById("mainApp").style.display = "block";
-      initAppData();
-    } else {
-      currentUserProfile = null;
-      document.getElementById("authOverlay").style.display = "flex";
-      document.getElementById("mainApp").style.display = "none";
-    }
+  // યુઝર્સ લિસ્ટ લાઈવ મોનિટર
+  db.ref('app_users').on('value', (snap) => {
+    allApprovedUsers = snap.val() || {};
+    renderAdminUserList();
   });
 
-  function switchAuthTab(mode) {
-    activeAuthMode = mode;
-    const tabL = document.getElementById("tabLogin");
-    const tabS = document.getElementById("tabSignup");
-    const nameGrp = document.getElementById("signupNameGroup");
-    const submitBtn = document.getElementById("authSubmitBtn");
+  function setAuthTab(tab) {
+    currentAuthTab = tab;
+    const btnL = document.getElementById('tabBtnLogin');
+    const btnR = document.getElementById('tabBtnReq');
+    const actBtn = document.getElementById('authActionBtn');
+    const msg = document.getElementById('authMsg');
+    msg.style.display = 'none';
 
-    if (mode === 'signup') {
-      tabS.classList.add('active');
-      tabL.classList.remove('active');
-      nameGrp.style.display = 'block';
-      submitBtn.innerText = "Naveen Account Banao (Sign Up)";
+    if (tab === 'request') {
+      btnR.classList.add('active');
+      btnL.classList.remove('active');
+      actBtn.innerText = "રિક્વેસ્ટ મોકલો (Request Access)";
     } else {
-      tabL.classList.add('active');
-      tabS.classList.remove('active');
-      nameGrp.style.display = 'none';
-      submitBtn.innerText = "Login Karo";
+      btnL.classList.add('active');
+      btnR.classList.remove('active');
+      actBtn.innerText = "લૉગિન કરો";
     }
   }
 
-  function handleAuthSubmit() {
-    const email = document.getElementById("authEmail").value.trim();
-    const pass = document.getElementById("authPassword").value;
-    const name = document.getElementById("authName").value.trim();
+  function handleAuthAction() {
+    const name = document.getElementById('authUserName').value.trim();
+    const pin = document.getElementById('authUserPin').value.trim();
+    const msg = document.getElementById('authMsg');
 
-    if (!email || !pass) {
-      alert("Email ane Password banne jaruri che.");
+    if (!name || !pin || pin.length !== 4) {
+      alert("તમારું નામ અને 4 આંકડાનો PIN દાખલ કરો.");
       return;
     }
 
-    if (activeAuthMode === 'signup') {
-      if (!name) { alert("Tamaru naam lakho."); return; }
-      auth.createUserWithEmailAndPassword(email, pass)
-        .then((res) => {
-          return res.user.updateProfile({ displayName: name });
-        })
-        .then(() => {
-          alert("Account banavi lidhu! Swagat che, " + name);
-        })
-        .catch((e) => alert("Sign Up Error: " + e.message));
+    // ૧. માસ્ટર એડમિન લૉગિન ચેક (PIN: 9999)
+    if (pin === MASTER_ADMIN_PIN) {
+      activeUser = name + " (Admin)";
+      isAdmin = true;
+      loginSuccess();
+      return;
+    }
+
+    const safeKey = name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+
+    // ૨. જો નવી રિક્વેસ્ટ મોકલવી હોય
+    if (currentAuthTab === 'request') {
+      if (allApprovedUsers[safeKey]) {
+        alert("આ નામ પહેલેથી રજીસ્ટર છે! સીધું લૉગિન કરો અથવા બીજું નામ રાખો.");
+        return;
+      }
+      db.ref('app_users/' + safeKey).set({
+        name: name,
+        pin: pin,
+        status: 'pending',
+        requestedAt: new Date().toLocaleDateString('gu-IN')
+      }).then(() => {
+        msg.style.display = 'block';
+        msg.style.color = '#eab308';
+        msg.innerText = "તમારી રિક્વેસ્ટ એડમિનને મોકલાઈ ગઈ છે! એડમિન Approve કરશે પછી લૉગિન થશે.";
+      });
+      return;
+    }
+
+    // ૩. સામાન્ય યુઝર લૉગિન ચેક
+    const userData = allApprovedUsers[safeKey];
+    if (!userData) {
+      alert("આ નામનું કોઈ એકાઉન્ટ નથી! પહેલા 'નવી રિક્વેસ્ટ' મોકલો.");
+      return;
+    }
+
+    if (userData.status === 'pending') {
+      alert("તમારું એકાઉન્ટ હજુ Pending છે. એડમિનની મંજૂરી મળ્યા પછી લૉગિન થઈ શકશે.");
+      return;
+    }
+
+    if (userData.status === 'approved' && userData.pin === pin) {
+      activeUser = userData.name;
+      isAdmin = false;
+      loginSuccess();
     } else {
-      auth.signInWithEmailAndPassword(email, pass)
-        .catch((e) => alert("Login Error: " + e.message));
+      alert("ખોટો PIN! સાચો PIN નાખો.");
     }
   }
 
-  function handleForgotPassword() {
-    const email = prompt("Tamaro Registered Email Address lakho jema reset link mokalvi hoy:");
-    if (email) {
-      auth.sendPasswordResetEmail(email.trim())
-        .then(() => {
-          alert("Password reset email mokli didhi che! Tamaru Gmail inbox/spam check karo.");
-        })
-        .catch((e) => alert("Error: " + e.message));
+  function loginSuccess() {
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('activeUserLabel').innerText = activeUser;
+
+    if (isAdmin) {
+      document.getElementById('adminBadge').style.display = 'inline-block';
+      document.getElementById('adminUserPanel').style.display = 'block';
+    } else {
+      document.getElementById('adminBadge').style.display = 'none';
+      document.getElementById('adminUserPanel').style.display = 'none';
+    }
+
+    initAppData();
+  }
+
+  function doLogout() {
+    activeUser = null;
+    isAdmin = false;
+    document.getElementById('authUserPin').value = '';
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+  }
+
+  // એડમિન પેનલ લિસ્ટ રેન્ડર કરવું
+  function renderAdminUserList() {
+    const tbody = document.getElementById('userListBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const keys = Object.keys(allApprovedUsers);
+    if (keys.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">કોઈ યુઝર્સ નથી</td></tr>';
+      return;
+    }
+
+    keys.forEach(k => {
+      const u = allApprovedUsers[k];
+      let tr = document.createElement('tr');
+      const isApp = u.status === 'approved';
+      tr.innerHTML = `
+        <td><strong>${u.name}</strong></td>
+        <td><span style="color:${isApp ? '#16a34a' : '#ea580c'}; font-weight:bold;">${isApp ? 'Active (મંજૂર)' : 'Pending (મંજૂરી બાકી)'}</span></td>
+        <td>
+          ${!isApp ? `<button class="btn-approve" onclick="approveUser('${k}')">Approve (✔)</button>` : ''}
+          <button class="btn-delete" style="padding:4px 8px; font-size:0.75rem;" onclick="removeUser('${k}')">કાઢી નાખો (✖)</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function approveUser(userKey) {
+    db.ref('app_users/' + userKey).update({ status: 'approved' })
+      .then(() => alert("યુઝર સફળતાપૂર્વક Approve થઈ ગયો!"));
+  }
+
+  function removeUser(userKey) {
+    if (confirm("શું તમારે આ યુઝરને કાઢી નાખવો છે?")) {
+      db.ref('app_users/' + userKey).remove();
     }
   }
 
-  function logoutUser() {
-    if (confirm("Shu tamare Logout thavu che?")) {
-      auth.signOut();
-    }
-  }
-
+  // ================= APP LOGIC =================
   function initAppData() {
-    // Cloud connection status
     const connectedRef = db.ref(".info/connected");
     connectedRef.on("value", (snap) => {
       const dot = document.getElementById("cloudStatusDot");
@@ -401,14 +469,12 @@
       }
     });
 
-    // Ponds listener
     db.ref('ponds').on('value', (snapshot) => {
       livePonds = snapshot.val() || {};
       updatePondDropdown();
       loadPondDetails();
     });
 
-    // Records listener
     db.ref('records').on('value', (snapshot) => {
       const data = snapshot.val();
       liveRecords = [];
@@ -434,7 +500,7 @@
     const name = document.getElementById('pondName').value.trim();
     const sDate = document.getElementById('stockDate').value;
     if (!name || !sDate) {
-      alert("Pond name ane Stocking date banne lakho.");
+      alert("પોન્ડનું નામ અને સ્ટોકિંગ તારીખ બંને ભરો.");
       return;
     }
     const cropTag = getCropNameFromDate(sDate);
@@ -445,7 +511,7 @@
     }).then(() => {
       document.getElementById('pondName').value = '';
       document.getElementById('stockDate').value = '';
-      alert(name + " (" + cropTag + ") save thai gayo!");
+      alert(name + " (" + cropTag + ") સેવ થઈ ગયો!");
     }).catch(e => alert("Error: " + e.message));
   }
 
@@ -453,7 +519,7 @@
     const pond = document.getElementById('selectedPond').value;
     if (!pond || !livePonds[pond]) return;
 
-    const newDate = prompt(`${pond} mate harvest pachi navi Stocking Date nakho (YYYY-MM-DD):`, new Date().toISOString().split('T')[0]);
+    const newDate = prompt(`${pond} માટે હાર્વેસ્ટ પછી નવી સ્ટોકિંગ તારીખ નાખો (YYYY-MM-DD):`, new Date().toISOString().split('T')[0]);
     if (newDate) {
       const newCropTag = getCropNameFromDate(newDate);
       let cropList = livePonds[pond].allCrops || [];
@@ -464,7 +530,7 @@
         currentCropTag: newCropTag,
         allCrops: cropList
       }).then(() => {
-        alert(`${pond} ma ${newCropTag} sharu thai gayu!`);
+        alert(`${pond} માં ${newCropTag} શરૂ થઈ ગયું!`);
       }).catch(e => alert("Error: " + e.message));
     }
   }
@@ -472,7 +538,7 @@
   function updatePondDropdown() {
     const dropdown = document.getElementById('selectedPond');
     const currentVal = dropdown.value;
-    dropdown.innerHTML = '<option value="">-- Pond Select Karo --</option>';
+    dropdown.innerHTML = '<option value="">-- પોન્ડ પસંદ કરો --</option>';
     for (let p in livePonds) {
       let opt = document.createElement('option');
       opt.value = p;
@@ -484,66 +550,4 @@
 
   function calculateDOC(stockDateStr, targetDateStr) {
     if (!stockDateStr || !targetDateStr) return 0;
-    const start = new Date(stockDateStr);
-    const target = new Date(targetDateStr);
-    const diffDays = Math.ceil((target - start) / (1000 * 60 * 60 * 24));
-    return diffDays >= 0 ? diffDays : 0;
-  }
-
-  function calculateCurrentDOC() {
-    const pond = document.getElementById('selectedPond').value;
-    const doseDate = document.getElementById('doseDate').value;
-    if (pond && livePonds[pond]) {
-      const doc = calculateDOC(livePonds[pond].stockingDate, doseDate);
-      document.getElementById('currentDOC').innerText = doc;
-    }
-  }
-
-  function loadPondDetails() {
-    const pond = document.getElementById('selectedPond').value;
-    const infoSection = document.getElementById('pondInfo');
-    const lastDoseSec = document.getElementById('lastDoseSection');
-
-    if (!pond || !livePonds[pond]) {
-      infoSection.style.display = "none";
-      lastDoseSec.style.display = "none";
-      renderHistory([]);
-      return;
-    }
-
-    const currentTag = livePonds[pond].currentCropTag || getCropNameFromDate(livePonds[pond].stockingDate);
-    infoSection.style.display = "flex";
-    lastDoseSec.style.display = "block";
-    document.getElementById('cropBatchText').innerText = currentTag + " (Current Culture)";
-    document.getElementById('infoStockDate').innerText = livePonds[pond].stockingDate;
-    calculateCurrentDOC();
-
-    updateCropFilterDropdown(pond, currentTag);
-
-    const currentCropRecords = liveRecords.filter(r => r.pond === pond && (r.cropTag === currentTag || !r.cropTag));
-    updateLastDoses(currentCropRecords);
-    renderFilteredHistory();
-  }
-
-  function updateCropFilterDropdown(pond, currentTag) {
-    const select = document.getElementById('filterCropSelect');
-    const currentVal = select.value;
-    select.innerHTML = '';
-
-    const cropList = livePonds[pond].allCrops || [currentTag];
-
-    let currentOpt = document.createElement('option');
-    currentOpt.value = currentTag;
-    currentOpt.innerText = `${currentTag} (Current Culture)`;
-    select.appendChild(currentOpt);
-
-    cropList.forEach(tag => {
-      if (tag !== currentTag) {
-        let opt = document.createElement('option');
-        opt.value = tag;
-        opt.innerText = `${tag} (Previous Culture)`;
-        select.appendChild(opt);
-      }
-    });
-
-    let allOpt = document.createEleme
+    const start = new Da
