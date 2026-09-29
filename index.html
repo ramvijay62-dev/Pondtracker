@@ -228,6 +228,13 @@
     white-space: nowrap;
     font-weight: 500;
   }
+  .gap-tag {
+    display: block;
+    font-size: 0.72rem;
+    color: #0284c7;
+    font-weight: 600;
+    margin-top: 2px;
+  }
   .pond-tag {
     background: #dbeafe;
     color: #1e40af;
@@ -350,10 +357,10 @@
     </div>
 
     <div class="grid-4" style="margin-top:14px;">
-      <div><label>Probiotic (gm/kg/Ltr):</label><input type="text" id="doseProbiotic" placeholder="દા.ત. 500 gm"></div>
-      <div><label>Minerals Mix (kg):</label><input type="text" id="doseMineral" placeholder="દા.ત. 10 kg"></div>
-      <div><label>Magnesium (kg):</label><input type="text" id="doseMg" placeholder="દા.ત. 25 kg"></div>
-      <div><label>Potash (kg):</label><input type="text" id="dosePotash" placeholder="દા.ત. 20 kg"></div>
+      <div><label>Probiotic (gm/kg/Ltr):</label><input type="text" id="doseProbiotic" placeholder="છેલ્લે - દિવસ પહેલાં"></div>
+      <div><label>Minerals Mix (kg):</label><input type="text" id="doseMineral" placeholder="છેલ્લે - દિવસ પહેલાં"></div>
+      <div><label>Magnesium (kg):</label><input type="text" id="doseMg" placeholder="છેલ્લે - દિવસ પહેલાં"></div>
+      <div><label>Potash (kg):</label><input type="text" id="dosePotash" placeholder="છેલ્લે - દિવસ પહેલાં"></div>
     </div>
     <button type="button" class="btn-primary" onclick="saveDoseCloud()">ડોઝ ક્લાઉડ પર સેવ કરો (Save Dose)</button>
   </div>
@@ -374,7 +381,7 @@
             <th>પોન્ડ (Pond)</th>
             <th>કલ્ચર (Culture)</th>
             <th>તારીખ (Date)</th>
-            <th>DOC</th>
+            <th>DOC (Gap)</th>
             <th>Probiotic</th>
             <th>Minerals</th>
             <th>Magnesium</th>
@@ -594,6 +601,14 @@
     return diffDays >= 0 ? diffDays : 0;
   }
 
+  function calculateDaysDiff(pastDateStr, todayDateStr) {
+    if (!pastDateStr || !todayDateStr) return null;
+    const past = new Date(pastDateStr);
+    const today = new Date(todayDateStr);
+    const diffDays = Math.floor((today - past) / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 ? diffDays : 0;
+  }
+
   function calculateCurrentDOC() {
     const pond = document.getElementById('selectedPond').value;
     const doseDate = document.getElementById('doseDate').value;
@@ -603,7 +618,6 @@
     }
   }
 
-  // પોન્ડ બદલાય ત્યારે અથવા ડેટા અપડેટ થાય ત્યારે
   function loadPondDetails() {
     const pond = document.getElementById('selectedPond').value;
     const infoSection = document.getElementById('pondInfo');
@@ -611,23 +625,21 @@
     const filterSelect = document.getElementById('filterCropSelect');
     const titleText = document.getElementById('historyTitleText');
 
-    // ૧. ડિફોલ્ટ: કોઈ પોન્ડ પસંદ નથી (બધા પોન્ડના Current Crop ની હિસ્ટ્રી બતાવવી)
     if (!pond || !livePonds[pond]) {
       infoSection.style.display = "none";
       lastDoseSec.style.display = "none";
       titleText.innerText = "૩. ડોઝ હિસ્ટ્રી - બધા પોન્ડનું ચાલુ કલ્ચર (All Ponds Current Culture)";
 
-      // ફિલ્ટર ડ્રોપડાઉનમાં બધા પોન્ડના ઓપ્શન
       filterSelect.innerHTML = `
         <option value="all_current">બધા પોન્ડ (Current Culture)</option>
         <option value="all_everything">બધો રેકોર્ડ (All History)</option>
       `;
 
+      resetInputPlaceholders();
       renderAllPondsCurrentCrop();
       return;
     }
 
-    // ૨. કોઈ ચોક્કસ પોન્ડ સિલેક્ટ કર્યો છે
     const currentTag = livePonds[pond].currentCropTag || getCropNameFromDate(livePonds[pond].stockingDate);
     infoSection.style.display = "flex";
     lastDoseSec.style.display = "block";
@@ -639,11 +651,63 @@
     updateCropFilterDropdown(pond, currentTag);
 
     const currentCropRecords = liveRecords.filter(r => r.pond === pond && (r.cropTag === currentTag || !r.cropTag));
-    updateLastDoses(currentCropRecords);
+    updateLastDosesAndPlaceholders(currentCropRecords);
     renderFilteredHistory();
   }
 
-  // ડિફોલ્ટ વ્યૂ: બધા પોન્ડના Current Culture રેકોર્ડ્સ
+  function resetInputPlaceholders() {
+    document.getElementById('doseProbiotic').placeholder = "છેલ્લે - દિવસ પહેલાં";
+    document.getElementById('doseMineral').placeholder = "છેલ્લે - દિવસ પહેલાં";
+    document.getElementById('doseMg').placeholder = "છેલ્લે - દિવસ પહેલાં";
+    document.getElementById('dosePotash').placeholder = "છેલ્લે - દિવસ પહેલાં";
+  }
+
+  // છેલ્લો ડોઝ અને ઇનપુટ બોક્સમાં કેટલા દિવસ પહેલા આપ્યો તે દર્શાવવું
+  function updateLastDosesAndPlaceholders(records) {
+    let lastP = "-", lastM = "-", lastMg = "-", lastK = "-";
+    let lastPDate = null, lastMDate = null, lastMgDate = null, lastKDate = null;
+
+    for (let i = records.length - 1; i >= 0; i--) {
+      let r = records[i];
+      if (r.probiotic && lastP === "-") {
+        lastP = `${r.probiotic} (DOC ${r.doc}, ${r.date})`;
+        lastPDate = r.date;
+      }
+      if (r.mineral && lastM === "-") {
+        lastM = `${r.mineral} (DOC ${r.doc}, ${r.date})`;
+        lastMDate = r.date;
+      }
+      if (r.mg && lastMg === "-") {
+        lastMg = `${r.mg} (DOC ${r.doc}, ${r.date})`;
+        lastMgDate = r.date;
+      }
+      if (r.potash && lastK === "-") {
+        lastK = `${r.potash} (DOC ${r.doc}, ${r.date})`;
+        lastKDate = r.date;
+      }
+    }
+
+    document.getElementById('lastProbiotic').innerText = lastP;
+    document.getElementById('lastMineral').innerText = lastM;
+    document.getElementById('lastMg').innerText = lastMg;
+    document.getElementById('lastPotash').innerText = lastK;
+
+    const todayDate = new Date().toISOString().split('T')[0];
+
+    function formatDaysAgo(doseDate) {
+      if (!doseDate) return "હજુ સુધી આપેલ નથી";
+      const diff = calculateDaysDiff(doseDate, todayDate);
+      if (diff === 0) return "આજે જ આપેલ છે";
+      if (diff === 1) return "છેલ્લે ૧ દિવસ પહેલાં";
+      return `છેલ્લે ${diff} દિવસ પહેલાં`;
+    }
+
+    document.getElementById('doseProbiotic').placeholder = formatDaysAgo(lastPDate);
+    document.getElementById('doseMineral').placeholder = formatDaysAgo(lastMDate);
+    document.getElementById('doseMg').placeholder = formatDaysAgo(lastMgDate);
+    document.getElementById('dosePotash').placeholder = formatDaysAgo(lastKDate);
+  }
+
   function renderAllPondsCurrentCrop() {
     const filterVal = document.getElementById('filterCropSelect').value;
 
@@ -651,7 +715,6 @@
     if (filterVal === 'all_everything') {
       filtered = liveRecords;
     } else {
-      // ફક્ત તેવા રેકોર્ડ્સ જે જે-તે પોન્ડના Current Crop સાથે મેચ થતા હોય
       filtered = liveRecords.filter(r => {
         const pondInfo = livePonds[r.pond];
         if (!pondInfo) return false;
@@ -687,7 +750,6 @@
     allOpt.innerText = "બધા કલ્ચર્સ (All Crops)";
     select.appendChild(allOpt);
 
-    // ડિફોલ્ટ હંમેશા Current Culture પર રહેશે
     select.value = currentTag;
   }
 
@@ -705,21 +767,6 @@
       pondRecords = pondRecords.filter(r => (r.cropTag === selectedFilter || (!r.cropTag && selectedFilter === getCropNameFromDate(livePonds[pond].stockingDate))));
     }
     renderHistory(pondRecords);
-  }
-
-  function updateLastDoses(records) {
-    let lastP = "-", lastM = "-", lastMg = "-", lastK = "-";
-    for (let i = records.length - 1; i >= 0; i--) {
-      let r = records[i];
-      if (r.probiotic && lastP === "-") lastP = `${r.probiotic} (DOC ${r.doc}, ${r.date})`;
-      if (r.mineral && lastM === "-") lastM = `${r.mineral} (DOC ${r.doc}, ${r.date})`;
-      if (r.mg && lastMg === "-") lastMg = `${r.mg} (DOC ${r.doc}, ${r.date})`;
-      if (r.potash && lastK === "-") lastK = `${r.potash} (DOC ${r.doc}, ${r.date})`;
-    }
-    document.getElementById('lastProbiotic').innerText = lastP;
-    document.getElementById('lastMineral').innerText = lastM;
-    document.getElementById('lastMg').innerText = lastMg;
-    document.getElementById('lastPotash').innerText = lastK;
   }
 
   function saveDoseCloud() {
@@ -760,6 +807,7 @@
     }).catch(e => alert("Error: " + e.message));
   }
 
+  // હિસ્ટ્રી ટેબલ રેન્ડર કરવું અને DOC ની સાથે Days Gap ની ગણતરી કરવી
   function renderHistory(records) {
     const tbody = document.getElementById('historyBody');
     tbody.innerHTML = '';
@@ -767,15 +815,37 @@
       tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">કોઈ રેકોર્ડ નથી (No Records Found)</td></tr>';
       return;
     }
+
+    // તારીખ મુજબ ચડતા ક્રમમાં રાખીને અગાઉના ડોઝ વચ્ચેનો ગેપ શોધવો
+    const sortedAsc = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const pondPrevDateMap = {};
+    const gapMap = {};
+
+    sortedAsc.forEach(r => {
+      const pKey = (r.pond || '') + '_' + (r.cropTag || '');
+      if (pondPrevDateMap[pKey]) {
+        const gap = calculateDaysDiff(pondPrevDateMap[pKey], r.date);
+        gapMap[r.id] = (gap === 0) ? "Same day" : `${gap} days`;
+      } else {
+        gapMap[r.id] = "First";
+      }
+      pondPrevDateMap[pKey] = r.date;
+    });
+
+    // તાજેતરના રેકોર્ડ્સ ઉપર દેખાય તે માટે રિવર્સમાં ડિસ્પ્લે
     [...records].reverse().forEach(r => {
       let tr = document.createElement('tr');
       const author = r.addedByName ? `👤 ${r.addedByName} (${r.addedAtTime || ''})` : "-";
+      const gapText = gapMap[r.id] ? `(Gap: ${gapMap[r.id]})` : "";
 
       tr.innerHTML = `
         <td><span class="pond-tag">${r.pond || '-'}</span></td>
         <td><strong style="color:var(--primary);">${r.cropTag || 'Crop'}</strong></td>
         <td>${r.date}</td>
-        <td><strong>${r.doc}</strong></td>
+        <td>
+          <strong>${r.doc}</strong>
+          <span class="gap-tag">${gapText}</span>
+        </td>
         <td>${r.probiotic || '-'}</td>
         <td>${r.mineral || '-'}</td>
         <td>${r.mg || '-'}</td>
