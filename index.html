@@ -216,7 +216,7 @@
   .dose-item strong { font-size: 0.9rem; color: #0f172a; word-break: break-word; }
 
   table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
-  th, td { padding: 8px 6px; border: 1px solid var(--border); text-align: left; }
+  th, td { padding: 8px 6px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
   th { background-color: #f8fafc; }
   
   .user-pill {
@@ -381,11 +381,11 @@
             <th>પોન્ડ (Pond)</th>
             <th>કલ્ચર (Culture)</th>
             <th>તારીખ (Date)</th>
-            <th>DOC (Gap)</th>
-            <th>Probiotic</th>
-            <th>Minerals</th>
-            <th>Magnesium</th>
-            <th>Potash</th>
+            <th>DOC</th>
+            <th>Probiotic (Gap)</th>
+            <th>Minerals (Gap)</th>
+            <th>Magnesium (Gap)</th>
+            <th>Potash (Gap)</th>
             <th>કોણે એડ કર્યું (User)</th>
             <th>Action</th>
           </tr>
@@ -601,11 +601,11 @@
     return diffDays >= 0 ? diffDays : 0;
   }
 
-  function calculateDaysDiff(pastDateStr, todayDateStr) {
-    if (!pastDateStr || !todayDateStr) return null;
+  function calculateDaysDiff(pastDateStr, targetDateStr) {
+    if (!pastDateStr || !targetDateStr) return null;
     const past = new Date(pastDateStr);
-    const today = new Date(todayDateStr);
-    const diffDays = Math.floor((today - past) / (1000 * 60 * 60 * 24));
+    const target = new Date(targetDateStr);
+    const diffDays = Math.floor((target - past) / (1000 * 60 * 60 * 24));
     return diffDays >= 0 ? diffDays : 0;
   }
 
@@ -807,7 +807,7 @@
     }).catch(e => alert("Error: " + e.message));
   }
 
-  // હિસ્ટ્રી ટેબલ રેન્ડર કરવું અને DOC ની સાથે Days Gap ની ગણતરી કરવી
+  // દરેક આઈટમ (Probiotic, Mineral, Mg, Potash) મુજબ પાછલા ડોઝનો ગેપ ગણીને હિસ્ટ્રી દર્શાવવી
   function renderHistory(records) {
     const tbody = document.getElementById('historyBody');
     tbody.innerHTML = '';
@@ -816,40 +816,87 @@
       return;
     }
 
-    // તારીખ મુજબ ચડતા ક્રમમાં રાખીને અગાઉના ડોઝ વચ્ચેનો ગેપ શોધવો
+    // તારીખ મુજબ ચડતા ક્રમમાં ગોઠવીને દરેક ઘટક માટે અલગ-અલગ છેલ્લી તારીખ ટ્રૅક કરવી
     const sortedAsc = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
-    const pondPrevDateMap = {};
-    const gapMap = {};
+    
+    // Key: pond + cropTag -> { lastPDate, lastMDate, lastMgDate, lastKDate }
+    const prevItemDates = {};
+    const itemGaps = {}; // recordId -> { pGap, mGap, mgGap, kGap }
 
     sortedAsc.forEach(r => {
       const pKey = (r.pond || '') + '_' + (r.cropTag || '');
-      if (pondPrevDateMap[pKey]) {
-        const gap = calculateDaysDiff(pondPrevDateMap[pKey], r.date);
-        gapMap[r.id] = (gap === 0) ? "Same day" : `${gap} days`;
-      } else {
-        gapMap[r.id] = "First";
+      if (!prevItemDates[pKey]) {
+        prevItemDates[pKey] = { p: null, m: null, mg: null, k: null };
       }
-      pondPrevDateMap[pKey] = r.date;
+
+      itemGaps[r.id] = { p: null, m: null, mg: null, k: null };
+
+      // ૧. Probiotic Gap
+      if (r.probiotic && r.probiotic.trim() !== '') {
+        if (prevItemDates[pKey].p) {
+          const diff = calculateDaysDiff(prevItemDates[pKey].p, r.date);
+          itemGaps[r.id].p = (diff === 0) ? "Same day" : `${diff} days`;
+        } else {
+          itemGaps[r.id].p = "First";
+        }
+        prevItemDates[pKey].p = r.date;
+      }
+
+      // ૨. Mineral Gap
+      if (r.mineral && r.mineral.trim() !== '') {
+        if (prevItemDates[pKey].m) {
+          const diff = calculateDaysDiff(prevItemDates[pKey].m, r.date);
+          itemGaps[r.id].m = (diff === 0) ? "Same day" : `${diff} days`;
+        } else {
+          itemGaps[r.id].m = "First";
+        }
+        prevItemDates[pKey].m = r.date;
+      }
+
+      // ૩. Magnesium Gap
+      if (r.mg && r.mg.trim() !== '') {
+        if (prevItemDates[pKey].mg) {
+          const diff = calculateDaysDiff(prevItemDates[pKey].mg, r.date);
+          itemGaps[r.id].mg = (diff === 0) ? "Same day" : `${diff} days`;
+        } else {
+          itemGaps[r.id].mg = "First";
+        }
+        prevItemDates[pKey].mg = r.date;
+      }
+
+      // ૪. Potash Gap
+      if (r.potash && r.potash.trim() !== '') {
+        if (prevItemDates[pKey].k) {
+          const diff = calculateDaysDiff(prevItemDates[pKey].k, r.date);
+          itemGaps[r.id].k = (diff === 0) ? "Same day" : `${diff} days`;
+        } else {
+          itemGaps[r.id].k = "First";
+        }
+        prevItemDates[pKey].k = r.date;
+      }
     });
 
     // તાજેતરના રેકોર્ડ્સ ઉપર દેખાય તે માટે રિવર્સમાં ડિસ્પ્લે
     [...records].reverse().forEach(r => {
       let tr = document.createElement('tr');
       const author = r.addedByName ? `👤 ${r.addedByName} (${r.addedAtTime || ''})` : "-";
-      const gapText = gapMap[r.id] ? `(Gap: ${gapMap[r.id]})` : "";
+      const gaps = itemGaps[r.id] || {};
+
+      function formatItemCell(val, gapVal) {
+        if (!val || val.trim() === '') return '-';
+        const gapText = gapVal ? `<span class="gap-tag">(${gapVal === 'First' ? 'First' : 'Gap: ' + gapVal})</span>` : '';
+        return `<div><strong>${val}</strong>${gapText}</div>`;
+      }
 
       tr.innerHTML = `
         <td><span class="pond-tag">${r.pond || '-'}</span></td>
         <td><strong style="color:var(--primary);">${r.cropTag || 'Crop'}</strong></td>
         <td>${r.date}</td>
-        <td>
-          <strong>${r.doc}</strong>
-          <span class="gap-tag">${gapText}</span>
-        </td>
-        <td>${r.probiotic || '-'}</td>
-        <td>${r.mineral || '-'}</td>
-        <td>${r.mg || '-'}</td>
-        <td>${r.potash || '-'}</td>
+        <td><strong>${r.doc}</strong></td>
+        <td>${formatItemCell(r.probiotic, gaps.p)}</td>
+        <td>${formatItemCell(r.mineral, gaps.m)}</td>
+        <td>${formatItemCell(r.mg, gaps.mg)}</td>
+        <td>${formatItemCell(r.potash, gaps.k)}</td>
         <td><span class="user-pill">${author}</span></td>
         <td><button class="btn-delete" title="કાઢી નાખો" onclick="deleteRecord('${r.id}')">✖</button></td>
       `;
