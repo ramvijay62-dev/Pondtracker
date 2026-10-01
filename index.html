@@ -52,28 +52,6 @@
     text-align: center;
     font-size: 1.3rem;
   }
-  .tab-group {
-    display: flex;
-    background: #e2e8f0;
-    padding: 4px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-  }
-  .tab-btn {
-    flex: 1;
-    padding: 10px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: #64748b;
-    cursor: pointer;
-  }
-  .tab-btn.active {
-    background: var(--primary);
-    color: white;
-  }
   .auth-field { margin-bottom: 12px; text-align: left; }
   .auth-field label { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
   .auth-field input {
@@ -103,6 +81,8 @@
     border-radius: 8px;
     margin-bottom: 14px;
     border: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .btn-logout {
     background: transparent;
@@ -121,6 +101,18 @@
     background: #e0f2fe;
     border: 1px solid #0284c7;
     color: #0284c7;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+  }
+  .btn-admin-user {
+    background: #fef08a;
+    border: 1px solid #ca8a04;
+    color: #854d0e;
     padding: 6px 12px;
     border-radius: 5px;
     font-size: 0.8rem;
@@ -266,7 +258,7 @@
   }
 
   /* POPUP SUMMARY MODAL */
-  #summaryModalOverlay {
+  #summaryModalOverlay, #addUserModalOverlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background-color: rgba(15, 23, 42, 0.75);
@@ -348,37 +340,43 @@
   </div>
 </div>
 
-<!-- AUTH SCREEN (LOGIN & SIGN UP) -->
+<!-- ADMIN ADD USER MODAL -->
+<div id="addUserModalOverlay">
+  <div class="summary-modal" style="max-width: 400px;">
+    <div class="summary-header">
+      <h3>👥 નવો યુઝર ઉમેરો (Admin)</h3>
+      <button onclick="closeAddUserModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b; margin:0; padding:0; width:auto;">✖</button>
+    </div>
+    <div class="auth-field">
+      <label>યુઝરનું નામ (Username):</label>
+      <input type="text" id="newUsername" placeholder="દા.ત. Ramesh">
+    </div>
+    <div class="auth-field">
+      <label>૬ આંકડાનો PIN (Number):</label>
+      <input type="password" id="newUserPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" style="letter-spacing: 4px;">
+    </div>
+    <button class="btn-primary" onclick="adminCreateUser()">યુઝર એકાઉન્ટ બનાવો</button>
+  </div>
+</div>
+
+<!-- AUTH SCREEN: USERNAME & PIN (NO SIGNUP) -->
 <div id="authScreen">
   <div class="auth-card">
     <h3>Aquaculture Tracker</h3>
-    
-    <div class="tab-group">
-      <button type="button" id="tabLoginBtn" class="tab-btn active" onclick="switchMode('login')">લૉગિન (Login)</button>
-      <button type="button" id="tabSignupBtn" class="tab-btn" onclick="switchMode('signup')">નવું ખાતું (Sign Up)</button>
-    </div>
+    <p style="font-size:0.85rem; color:#64748b; text-align:center; margin-top:0; margin-bottom:14px;">લૉગિન કરવા માટે નામ અને PIN દાખલ કરો</p>
 
-    <!-- Sign Up Name Box -->
-    <div id="nameRow" class="auth-field" style="display:none;">
-      <label>તમારું પૂરું નામ (Full Name):</label>
-      <input type="text" id="inpName" placeholder="દા.ત. Ramesh Bhai">
+    <div class="auth-field">
+      <label>તમારું નામ (Username):</label>
+      <input type="text" id="inpUsername" placeholder="દા.ત. Vijay" autofocus>
     </div>
 
     <div class="auth-field">
-      <label>ઈમેઈલ (Email Address):</label>
-      <input type="email" id="inpEmail" placeholder="user@gmail.com">
-    </div>
-
-    <div class="auth-field">
-      <label>પાસવર્ડ (Password - ઓછામાં ઓછા 6 અક્ષર):</label>
-      <input type="password" id="inpPass" placeholder="••••••••">
+      <label>૬ આંકડાનો PIN:</label>
+      <!-- Direct Number Pad for Mobile -->
+      <input type="password" id="inpPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" style="letter-spacing: 4px;">
     </div>
 
     <button type="button" id="submitAuthBtn" class="btn-primary" onclick="processAuth()">લૉગિન કરો (Login)</button>
-
-    <div style="text-align:center; margin-top:14px;">
-      <a href="javascript:void(0)" onclick="sendForgotPass()" style="font-size:0.8rem; color:var(--primary); text-decoration:none; font-weight:600;">પાસવર્ડ ભૂલાઈ ગયો? (Forgot Password)</a>
-    </div>
   </div>
 </div>
 
@@ -391,6 +389,7 @@
       👤 <strong><span id="navUserName">User</span></strong>
     </div>
     <div style="display:flex; gap:8px;">
+      <button type="button" class="btn-admin-user" onclick="openAddUserModal()">👥 Add User</button>
       <button type="button" class="btn-summary" onclick="openSummaryModal()">📊 Quick Summary</button>
       <button type="button" class="btn-logout" onclick="userLogout()">લૉગઆઉટ (Logout)</button>
     </div>
@@ -508,7 +507,6 @@
   const db = firebase.database();
   const auth = firebase.auth();
 
-  let curMode = 'login';
   let loggedInUser = null;
   let livePonds = {};
   let liveRecords = [];
@@ -518,24 +516,9 @@
 
   document.getElementById('doseDate').valueAsDate = new Date();
 
-  function switchMode(mode) {
-    curMode = mode;
-    const btnL = document.getElementById('tabLoginBtn');
-    const btnS = document.getElementById('tabSignupBtn');
-    const nameRow = document.getElementById('nameRow');
-    const submitBtn = document.getElementById('submitAuthBtn');
-
-    if (mode === 'signup') {
-      btnS.classList.add('active');
-      btnL.classList.remove('active');
-      nameRow.style.display = 'block';
-      submitBtn.innerText = "નવું એકાઉન્ટ બનાવો (Sign Up)";
-    } else {
-      btnL.classList.add('active');
-      btnS.classList.remove('active');
-      nameRow.style.display = 'none';
-      submitBtn.innerText = "લૉગિન કરો (Login)";
-    }
+  function makeInternalEmail(username) {
+    const cleanUser = username.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `${cleanUser}@farmtracker.internal`;
   }
 
   // Auth State Listener
@@ -543,7 +526,6 @@
     if (user) {
       loggedInUser = {
         uid: user.uid,
-        email: user.email,
         name: user.displayName || user.email.split('@')[0]
       };
       document.getElementById('navUserName').innerText = loggedInUser.name;
@@ -557,39 +539,80 @@
     }
   });
 
+  // Login handler
   function processAuth() {
-    const email = document.getElementById('inpEmail').value.trim();
-    const pass = document.getElementById('inpPass').value.trim();
-    const name = document.getElementById('inpName').value.trim();
+    const rawUsername = document.getElementById('inpUsername').value.trim();
+    const pin = document.getElementById('inpPin').value.trim();
 
-    if (!email || !pass) {
-      alert("Email અને Password બંને દાખલ કરો.");
+    if (!rawUsername) {
+      alert("મહેરબાની કરીને તમારું નામ (Username) દાખલ કરો.");
+      return;
+    }
+    if (!pin || pin.length < 6) {
+      alert("PIN ઓછામાં ઓછા 6 આંકડાનો હોવો જોઈએ.");
       return;
     }
 
-    if (curMode === 'signup') {
-      if (!name) { alert("તમારું પૂરું નામ લખો."); return; }
-      auth.createUserWithEmailAndPassword(email, pass)
-        .then((cred) => {
-          return cred.user.updateProfile({ displayName: name });
-        })
-        .then(() => {
-          alert("એકાઉન્ટ સફળતાપૂર્વક બની ગયું! સ્વાગત છે, " + name);
-        })
-        .catch(err => alert("Sign Up Error: " + err.message));
-    } else {
-      auth.signInWithEmailAndPassword(email, pass)
-        .catch(err => alert("Login Error: " + err.message));
-    }
+    const internalEmail = makeInternalEmail(rawUsername);
+
+    auth.signInWithEmailAndPassword(internalEmail, pin)
+      .catch(err => {
+        // Fallback for Master Admin first time auto-creation
+        if (rawUsername.toLowerCase() === 'admin' && pin === '999999' && err.code === 'auth/user-not-found') {
+          auth.createUserWithEmailAndPassword(internalEmail, pin).then((cred) => {
+            return cred.user.updateProfile({ displayName: 'Admin' });
+          });
+          return;
+        }
+
+        if (err.code === 'auth/user-not-found') {
+          alert("આ નામનું ખાતું મળ્યું નથી! એડમિન દ્વારા આઈડી બનાવડાવો.");
+        } else if (err.code === 'auth/wrong-password') {
+          alert("ખોટો PIN! સાચો PIN નાખો.");
+        } else {
+          alert("Login Error: " + err.message);
+        }
+      });
   }
 
-  function sendForgotPass() {
-    const email = prompt("પાસવર્ડ રીસેટ લિંક મેળવવા તમારો ઈમેઈલ નાખો:");
-    if (email) {
-      auth.sendPasswordResetEmail(email.trim())
-        .then(() => alert("રીસેટ લિંક ઈમેઈલ પર મોકલી દીધી છે! Gmail ચેક કરો."))
-        .catch(err => alert("Error: " + err.message));
-    }
+  // Admin add user modal
+  function openAddUserModal() {
+    document.getElementById('addUserModalOverlay').style.display = 'flex';
+  }
+  function closeAddUserModal() {
+    document.getElementById('addUserModalOverlay').style.display = 'none';
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newUserPin').value = '';
+  }
+
+  function adminCreateUser() {
+    const uName = document.getElementById('newUsername').value.trim();
+    const uPin = document.getElementById('newUserPin').value.trim();
+
+    if (!uName) { alert("યુઝરનું નામ લખો."); return; }
+    if (!uPin || uPin.length < 6) { alert("PIN ઓછામાં ઓછા 6 આંકડાનો હોવો જોઈએ."); return; }
+
+    const targetEmail = makeInternalEmail(uName);
+
+    // Save to secondary Firebase App to create user without logging out admin
+    const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
+    secondaryApp.auth().createUserWithEmailAndPassword(targetEmail, uPin)
+      .then((cred) => {
+        return cred.user.updateProfile({ displayName: uName });
+      })
+      .then(() => {
+        alert(`સફળતા! '${uName}' નું નવું એકાઉન્ટ PIN સાથે બની ગયું છે.`);
+        secondaryApp.delete();
+        closeAddUserModal();
+      })
+      .catch(err => {
+        secondaryApp.delete();
+        if (err.code === 'auth/email-already-in-use') {
+          alert("આ નામનું એકાઉન્ટ પહેલેથી બનેલું છે!");
+        } else {
+          alert("Error: " + err.message);
+        }
+      });
   }
 
   function userLogout() {
@@ -640,7 +663,6 @@
 
   // ================= POPUP MODAL LOGIC =================
   function checkAndShowSummaryModal() {
-    // Both Ponds and Records must be downloaded before showing popup
     if (!hasShownReloadPopup && isPondsLoaded && isRecordsLoaded && Object.keys(livePonds).length > 0) {
       hasShownReloadPopup = true;
       openSummaryModal();
@@ -680,7 +702,6 @@
       const curTag = pondInfo.currentCropTag || getCropNameFromDate(pondInfo.stockingDate);
       const curTagNorm = normalizeTag(curTag);
       
-      // Filter current crop records accurately (by cropTag or stockingDate)
       const pRecords = liveRecords.filter(r => {
         if (!r.pond || r.pond.toString().trim().toLowerCase() !== pName.toString().trim().toLowerCase()) return false;
         if (r.cropTag) {
@@ -689,7 +710,6 @@
         return r.date >= pondInfo.stockingDate;
       });
 
-      // Sort by date ascending
       pRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       let lastPDate = null, lastMDate = null, lastMgDate = null, lastKDate = null;
