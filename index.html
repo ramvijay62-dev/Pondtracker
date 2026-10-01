@@ -512,6 +512,8 @@
   let loggedInUser = null;
   let livePonds = {};
   let liveRecords = [];
+  let isPondsLoaded = false;
+  let isRecordsLoaded = false;
   let hasShownReloadPopup = false;
 
   document.getElementById('doseDate').valueAsDate = new Date();
@@ -614,6 +616,7 @@
 
     db.ref('ponds').on('value', (snapshot) => {
       livePonds = snapshot.val() || {};
+      isPondsLoaded = true;
       updatePondDropdown();
       loadPondDetails();
       checkAndShowSummaryModal();
@@ -629,6 +632,7 @@
           liveRecords.push(r);
         });
       }
+      isRecordsLoaded = true;
       loadPondDetails();
       checkAndShowSummaryModal();
     });
@@ -636,10 +640,12 @@
 
   // ================= POPUP MODAL LOGIC =================
   function checkAndShowSummaryModal() {
-    // રીલોડ પછી એકવાર ડેટા આવી જાય એટલે ઓટોમેટિક પોપઅપ ખુલશે
-    if (!hasShownReloadPopup && Object.keys(livePonds).length > 0) {
+    // Both Ponds and Records must be downloaded before showing popup
+    if (!hasShownReloadPopup && isPondsLoaded && isRecordsLoaded && Object.keys(livePonds).length > 0) {
       hasShownReloadPopup = true;
       openSummaryModal();
+    } else if (hasShownReloadPopup && document.getElementById('summaryModalOverlay').style.display === 'flex') {
+      buildSummaryTable();
     }
   }
 
@@ -650,6 +656,11 @@
 
   function closeSummaryModal() {
     document.getElementById('summaryModalOverlay').style.display = 'none';
+  }
+
+  function normalizeTag(tag) {
+    if (!tag) return '';
+    return tag.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
   function buildSummaryTable() {
@@ -667,18 +678,27 @@
     pondKeys.forEach(pName => {
       const pondInfo = livePonds[pName];
       const curTag = pondInfo.currentCropTag || getCropNameFromDate(pondInfo.stockingDate);
+      const curTagNorm = normalizeTag(curTag);
       
-      // તે પોન્ડના Current Crop ના રેકોર્ડ્સ
-      const pRecords = liveRecords.filter(r => r.pond === pName && (r.cropTag === curTag || (!r.cropTag && r.date >= pondInfo.stockingDate)));
+      // Filter current crop records accurately (by cropTag or stockingDate)
+      const pRecords = liveRecords.filter(r => {
+        if (!r.pond || r.pond.toString().trim().toLowerCase() !== pName.toString().trim().toLowerCase()) return false;
+        if (r.cropTag) {
+          return normalizeTag(r.cropTag) === curTagNorm;
+        }
+        return r.date >= pondInfo.stockingDate;
+      });
+
+      // Sort by date ascending
+      pRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       let lastPDate = null, lastMDate = null, lastMgDate = null, lastKDate = null;
-      for (let i = pRecords.length - 1; i >= 0; i--) {
-        let r = pRecords[i];
-        if (r.probiotic && r.probiotic.trim() !== '' && !lastPDate) lastPDate = r.date;
-        if (r.mineral && r.mineral.trim() !== '' && !lastMDate) lastMDate = r.date;
-        if (r.mg && r.mg.trim() !== '' && !lastMgDate) lastMgDate = r.date;
-        if (r.potash && r.potash.trim() !== '' && !lastKDate) lastKDate = r.date;
-      }
+      pRecords.forEach(r => {
+        if (r.probiotic && r.probiotic.toString().trim() !== '') lastPDate = r.date;
+        if (r.mineral && r.mineral.toString().trim() !== '') lastMDate = r.date;
+        if (r.mg && r.mg.toString().trim() !== '') lastMgDate = r.date;
+        if (r.potash && r.potash.toString().trim() !== '') lastKDate = r.date;
+      });
 
       function formatSummaryBadge(dateVal) {
         if (!dateVal) return `<span class="summary-badge badge-none">નથી આપેલ</span>`;
@@ -811,6 +831,8 @@
     }
 
     const currentTag = livePonds[pond].currentCropTag || getCropNameFromDate(livePonds[pond].stockingDate);
+    const curTagNorm = normalizeTag(currentTag);
+
     infoSection.style.display = "flex";
     lastDoseSec.style.display = "block";
     titleText.innerText = `૩. ડોઝ હિસ્ટ્રી - ${pond}`;
@@ -820,7 +842,11 @@
 
     updateCropFilterDropdown(pond, currentTag);
 
-    const currentCropRecords = liveRecords.filter(r => r.pond === pond && (r.cropTag === currentTag || !r.cropTag));
+    const currentCropRecords = liveRecords.filter(r => {
+      if (!r.pond || r.pond.toString().trim().toLowerCase() !== pond.toString().trim().toLowerCase()) return false;
+      return (r.cropTag && normalizeTag(r.cropTag) === curTagNorm) || (!r.cropTag && r.date >= livePonds[pond].stockingDate);
+    });
+
     updateLastDosesAndPlaceholders(currentCropRecords);
     renderFilteredHistory();
   }
@@ -838,19 +864,19 @@
 
     for (let i = records.length - 1; i >= 0; i--) {
       let r = records[i];
-      if (r.probiotic && lastP === "-") {
+      if (r.probiotic && r.probiotic.toString().trim() !== '' && lastP === "-") {
         lastP = `${r.probiotic} (DOC ${r.doc}, ${r.date})`;
         lastPDate = r.date;
       }
-      if (r.mineral && lastM === "-") {
+      if (r.mineral && r.mineral.toString().trim() !== '' && lastM === "-") {
         lastM = `${r.mineral} (DOC ${r.doc}, ${r.date})`;
         lastMDate = r.date;
       }
-      if (r.mg && lastMg === "-") {
+      if (r.mg && r.mg.toString().trim() !== '' && lastMg === "-") {
         lastMg = `${r.mg} (DOC ${r.doc}, ${r.date})`;
         lastMgDate = r.date;
       }
-      if (r.potash && lastK === "-") {
+      if (r.potash && r.potash.toString().trim() !== '' && lastK === "-") {
         lastK = `${r.potash} (DOC ${r.doc}, ${r.date})`;
         lastKDate = r.date;
       }
@@ -885,10 +911,11 @@
       filtered = liveRecords;
     } else {
       filtered = liveRecords.filter(r => {
-        const pondInfo = livePonds[r.pond];
-        if (!pondInfo) return false;
+        const pondKey = Object.keys(livePonds).find(k => k.toString().trim().toLowerCase() === (r.pond || '').toString().trim().toLowerCase());
+        if (!pondKey) return false;
+        const pondInfo = livePonds[pondKey];
         const pondCurTag = pondInfo.currentCropTag || getCropNameFromDate(pondInfo.stockingDate);
-        return r.cropTag === pondCurTag || (!r.cropTag && r.date >= pondInfo.stockingDate);
+        return (r.cropTag && normalizeTag(r.cropTag) === normalizeTag(pondCurTag)) || (!r.cropTag && r.date >= pondInfo.stockingDate);
       });
     }
 
@@ -930,10 +957,13 @@
     }
 
     const selectedFilter = document.getElementById('filterCropSelect').value;
-    let pondRecords = liveRecords.filter(r => r.pond === pond);
+    let pondRecords = liveRecords.filter(r => (r.pond || '').toString().trim().toLowerCase() === pond.toString().trim().toLowerCase());
 
     if (selectedFilter !== 'all') {
-      pondRecords = pondRecords.filter(r => (r.cropTag === selectedFilter || (!r.cropTag && selectedFilter === getCropNameFromDate(livePonds[pond].stockingDate))));
+      pondRecords = pondRecords.filter(r => {
+        if (r.cropTag) return normalizeTag(r.cropTag) === normalizeTag(selectedFilter);
+        return normalizeTag(selectedFilter) === normalizeTag(getCropNameFromDate(livePonds[pond].stockingDate));
+      });
     }
     renderHistory(pondRecords);
   }
@@ -989,14 +1019,14 @@
     const itemGaps = {};
 
     sortedAsc.forEach(r => {
-      const pKey = (r.pond || '') + '_' + (r.cropTag || '');
+      const pKey = (r.pond || '').toString().trim().toLowerCase() + '_' + normalizeTag(r.cropTag);
       if (!prevItemDates[pKey]) {
         prevItemDates[pKey] = { p: null, m: null, mg: null, k: null };
       }
 
       itemGaps[r.id] = { p: null, m: null, mg: null, k: null };
 
-      if (r.probiotic && r.probiotic.trim() !== '') {
+      if (r.probiotic && r.probiotic.toString().trim() !== '') {
         if (prevItemDates[pKey].p) {
           const diff = calculateDaysDiff(prevItemDates[pKey].p, r.date);
           itemGaps[r.id].p = (diff === 0) ? "Same day" : `${diff} days`;
@@ -1006,7 +1036,7 @@
         prevItemDates[pKey].p = r.date;
       }
 
-      if (r.mineral && r.mineral.trim() !== '') {
+      if (r.mineral && r.mineral.toString().trim() !== '') {
         if (prevItemDates[pKey].m) {
           const diff = calculateDaysDiff(prevItemDates[pKey].m, r.date);
           itemGaps[r.id].m = (diff === 0) ? "Same day" : `${diff} days`;
@@ -1016,7 +1046,7 @@
         prevItemDates[pKey].m = r.date;
       }
 
-      if (r.mg && r.mg.trim() !== '') {
+      if (r.mg && r.mg.toString().trim() !== '') {
         if (prevItemDates[pKey].mg) {
           const diff = calculateDaysDiff(prevItemDates[pKey].mg, r.date);
           itemGaps[r.id].mg = (diff === 0) ? "Same day" : `${diff} days`;
@@ -1026,7 +1056,7 @@
         prevItemDates[pKey].mg = r.date;
       }
 
-      if (r.potash && r.potash.trim() !== '') {
+      if (r.potash && r.potash.toString().trim() !== '') {
         if (prevItemDates[pKey].k) {
           const diff = calculateDaysDiff(prevItemDates[pKey].k, r.date);
           itemGaps[r.id].k = (diff === 0) ? "Same day" : `${diff} days`;
@@ -1043,7 +1073,7 @@
       const gaps = itemGaps[r.id] || {};
 
       function formatItemCell(val, gapVal) {
-        if (!val || val.trim() === '') return '-';
+        if (!val || val.toString().trim() === '') return '-';
         const gapText = gapVal ? `<span class="gap-tag">(${gapVal === 'First' ? 'First' : 'Gap: ' + gapVal})</span>` : '';
         return `<div><strong>${val}</strong>${gapText}</div>`;
       }
