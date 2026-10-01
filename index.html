@@ -109,6 +109,18 @@
     width: auto;
     margin: 0;
   }
+  .btn-change-pin {
+    background: #f1f5f9;
+    border: 1px solid #64748b;
+    color: #334155;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+  }
   .btn-admin-user {
     background: #fef08a;
     border: 1px solid #ca8a04;
@@ -257,8 +269,8 @@
     border-radius: 50%;
   }
 
-  /* POPUP SUMMARY MODAL */
-  #summaryModalOverlay, #addUserModalOverlay {
+  /* MODALS OVERLAY */
+  #summaryModalOverlay, #addUserModalOverlay, #changePinModalOverlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background-color: rgba(15, 23, 42, 0.75);
@@ -344,7 +356,7 @@
 <div id="addUserModalOverlay">
   <div class="summary-modal" style="max-width: 400px;">
     <div class="summary-header">
-      <h3>👥 નવો યુઝર ઉમેરો (Admin)</h3>
+      <h3>👥 નવો યુઝર ઉમેરો (Admin Only)</h3>
       <button onclick="closeAddUserModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b; margin:0; padding:0; width:auto;">✖</button>
     </div>
     <div class="auth-field">
@@ -359,21 +371,39 @@
   </div>
 </div>
 
-<!-- AUTH SCREEN: USERNAME & PIN (NO SIGNUP) -->
+<!-- CHANGE PIN MODAL -->
+<div id="changePinModalOverlay">
+  <div class="summary-modal" style="max-width: 400px;">
+    <div class="summary-header">
+      <h3>🔐 PIN બદલો (Change PIN)</h3>
+      <button onclick="closeChangePinModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b; margin:0; padding:0; width:auto;">✖</button>
+    </div>
+    <div class="auth-field">
+      <label>હાલનો PIN / Password:</label>
+      <input type="password" id="currPin" placeholder="••••••">
+    </div>
+    <div class="auth-field">
+      <label>નવો ૬ આંકડાનો PIN:</label>
+      <input type="password" id="newPinVal" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" style="letter-spacing: 4px;">
+    </div>
+    <button class="btn-primary" onclick="executeChangePin()">નવો PIN સેવ કરો</button>
+  </div>
+</div>
+
+<!-- AUTH SCREEN: USERNAME/EMAIL & PIN -->
 <div id="authScreen">
   <div class="auth-card">
     <h3>Aquaculture Tracker</h3>
-    <p style="font-size:0.85rem; color:#64748b; text-align:center; margin-top:0; margin-bottom:14px;">લૉગિન કરવા માટે નામ અને PIN દાખલ કરો</p>
+    <p style="font-size:0.85rem; color:#64748b; text-align:center; margin-top:0; margin-bottom:14px;">લૉગિન કરવા માટે નામ/ઈમેઈલ અને PIN દાખલ કરો</p>
 
     <div class="auth-field">
-      <label>તમારું નામ (Username):</label>
-      <input type="text" id="inpUsername" placeholder="દા.ત. Vijay" autofocus>
+      <label>Username અથવા Email:</label>
+      <input type="text" id="inpUsername" placeholder="દા.ત. admin અથવા ram.vijay62@gmail.com" autofocus>
     </div>
 
     <div class="auth-field">
-      <label>૬ આંકડાનો PIN:</label>
-      <!-- Direct Number Pad for Mobile -->
-      <input type="password" id="inpPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" style="letter-spacing: 4px;">
+      <label>PIN / Password:</label>
+      <input type="password" id="inpPin" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="••••••" style="letter-spacing: 4px;">
     </div>
 
     <button type="button" id="submitAuthBtn" class="btn-primary" onclick="processAuth()">લૉગિન કરો (Login)</button>
@@ -387,11 +417,13 @@
       <span id="cloudStatusDot" class="status-dot"></span>
       <span id="cloudStatusText">(જોડાઈ રહ્યું છે...)</span> | 
       👤 <strong><span id="navUserName">User</span></strong>
+      <span id="adminBadge" style="display:none; background:#fef08a; color:#854d0e; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:bold;">ADMIN</span>
     </div>
     <div style="display:flex; gap:8px;">
-      <button type="button" class="btn-admin-user" onclick="openAddUserModal()">👥 Add User</button>
+      <button type="button" id="adminUserBtn" class="btn-admin-user" style="display:none;" onclick="openAddUserModal()">👥 Add User</button>
+      <button type="button" class="btn-change-pin" onclick="openChangePinModal()">🔐 PIN બદલો</button>
       <button type="button" class="btn-summary" onclick="openSummaryModal()">📊 Quick Summary</button>
-      <button type="button" class="btn-logout" onclick="userLogout()">લૉગઆઉટ (Logout)</button>
+      <button type="button" class="btn-logout" onclick="userLogout()">લૉગઆઉટ</button>
     </div>
   </div>
 
@@ -516,19 +548,45 @@
 
   document.getElementById('doseDate').valueAsDate = new Date();
 
-  function makeInternalEmail(username) {
-    const cleanUser = username.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  function makeInternalEmail(input) {
+    if (input.includes('@')) return input.toLowerCase().trim();
+    const cleanUser = input.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     return `${cleanUser}@farmtracker.internal`;
+  }
+
+  // Check Admin Privilege
+  function checkIsAdmin(userEmail, displayName) {
+    if (!userEmail) return false;
+    const emailLower = userEmail.toLowerCase().trim();
+    const nameLower = (displayName || '').toLowerCase().trim();
+    return emailLower === 'ram.vijay62@gmail.com' || 
+           emailLower === 'admin@farmtracker.internal' || 
+           nameLower === 'admin';
   }
 
   // Auth State Listener
   auth.onAuthStateChanged((user) => {
     if (user) {
+      const isAdmin = checkIsAdmin(user.email, user.displayName);
       loggedInUser = {
         uid: user.uid,
-        name: user.displayName || user.email.split('@')[0]
+        email: user.email,
+        name: user.displayName || user.email.split('@')[0],
+        isAdmin: isAdmin
       };
       document.getElementById('navUserName').innerText = loggedInUser.name;
+      
+      // Admin Button visibility
+      const adminBtn = document.getElementById('adminUserBtn');
+      const adminBadge = document.getElementById('adminBadge');
+      if (isAdmin) {
+        adminBtn.style.display = 'inline-block';
+        adminBadge.style.display = 'inline-block';
+      } else {
+        adminBtn.style.display = 'none';
+        adminBadge.style.display = 'none';
+      }
+
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('mainDashboard').style.display = 'block';
       initDataStream();
@@ -541,11 +599,11 @@
 
   // Login handler
   function processAuth() {
-    const rawUsername = document.getElementById('inpUsername').value.trim();
+    const rawInput = document.getElementById('inpUsername').value.trim();
     const pin = document.getElementById('inpPin').value.trim();
 
-    if (!rawUsername) {
-      alert("મહેરબાની કરીને તમારું નામ (Username) દાખલ કરો.");
+    if (!rawInput) {
+      alert("નામ અથવા Email દાખલ કરો.");
       return;
     }
     if (!pin || pin.length < 6) {
@@ -553,22 +611,22 @@
       return;
     }
 
-    const internalEmail = makeInternalEmail(rawUsername);
+    const targetEmail = makeInternalEmail(rawInput);
 
-    auth.signInWithEmailAndPassword(internalEmail, pin)
+    auth.signInWithEmailAndPassword(targetEmail, pin)
       .catch(err => {
-        // Fallback for Master Admin first time auto-creation
-        if (rawUsername.toLowerCase() === 'admin' && pin === '999999' && err.code === 'auth/user-not-found') {
-          auth.createUserWithEmailAndPassword(internalEmail, pin).then((cred) => {
+        // First-time fallback create for admin
+        if (rawInput.toLowerCase() === 'admin' && pin === '999999' && err.code === 'auth/user-not-found') {
+          auth.createUserWithEmailAndPassword(targetEmail, pin).then((cred) => {
             return cred.user.updateProfile({ displayName: 'Admin' });
           });
           return;
         }
 
         if (err.code === 'auth/user-not-found') {
-          alert("આ નામનું ખાતું મળ્યું નથી! એડમિન દ્વારા આઈડી બનાવડાવો.");
+          alert("આ એકાઉન્ટ મળ્યું નથી! એડમિન દ્વારા આઈડી બનાવડાવો.");
         } else if (err.code === 'auth/wrong-password') {
-          alert("ખોટો PIN! સાચો PIN નાખો.");
+          alert("ખોટો PIN / Password! સાચો PIN નાખો.");
         } else {
           alert("Login Error: " + err.message);
         }
@@ -594,7 +652,6 @@
 
     const targetEmail = makeInternalEmail(uName);
 
-    // Save to secondary Firebase App to create user without logging out admin
     const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
     secondaryApp.auth().createUserWithEmailAndPassword(targetEmail, uPin)
       .then((cred) => {
@@ -609,6 +666,45 @@
         secondaryApp.delete();
         if (err.code === 'auth/email-already-in-use') {
           alert("આ નામનું એકાઉન્ટ પહેલેથી બનેલું છે!");
+        } else {
+          alert("Error: " + err.message);
+        }
+      });
+  }
+
+  // Change PIN Functions
+  function openChangePinModal() {
+    document.getElementById('changePinModalOverlay').style.display = 'flex';
+  }
+  function closeChangePinModal() {
+    document.getElementById('changePinModalOverlay').style.display = 'none';
+    document.getElementById('currPin').value = '';
+    document.getElementById('newPinVal').value = '';
+  }
+
+  function executeChangePin() {
+    const cPin = document.getElementById('currPin').value.trim();
+    const nPin = document.getElementById('newPinVal').value.trim();
+
+    if (!cPin) { alert("હાલનો PIN દાખલ કરો."); return; }
+    if (!nPin || nPin.length < 6) { alert("નવો PIN ઓછામાં ઓછા 6 આંકડાનો હોવો જોઈએ."); return; }
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Re-authenticate user before updating password
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, cPin);
+    user.reauthenticateWithCredential(cred)
+      .then(() => {
+        return user.updatePassword(nPin);
+      })
+      .then(() => {
+        alert("તમારો PIN સફળતાપૂર્વક બદલાઈ ગયો છે! હવે આ નવા PIN થી લૉગિન થશે.");
+        closeChangePinModal();
+      })
+      .catch(err => {
+        if (err.code === 'auth/wrong-password') {
+          alert("હાલનો PIN ખોટો છે!");
         } else {
           alert("Error: " + err.message);
         }
