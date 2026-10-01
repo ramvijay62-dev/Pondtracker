@@ -398,7 +398,8 @@
 
     <div class="auth-field">
       <label>Username અથવા Email:</label>
-      <input type="text" id="inpUsername" placeholder="દા.ત. admin અથવા ram.vijay62@gmail.com" autofocus>
+      <!-- Example placeholder without revealing admin ID -->
+      <input type="text" id="inpUsername" placeholder="દા.ત. Ramesh અથવા user1" autofocus>
     </div>
 
     <div class="auth-field">
@@ -588,7 +589,6 @@
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('mainDashboard').style.display = 'block';
 
-      // Login thai gaya pachi reset ane connect karvu
       hasShownPopupThisSession = false;
       initDataStream();
     } else {
