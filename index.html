@@ -322,7 +322,7 @@
 </head>
 <body>
 
-<!-- SUMMARY POPUP MODAL (ON RELOAD) -->
+<!-- SUMMARY POPUP MODAL -->
 <div id="summaryModalOverlay">
   <div class="summary-modal">
     <div class="summary-header">
@@ -544,7 +544,7 @@
   let liveRecords = [];
   let isPondsLoaded = false;
   let isRecordsLoaded = false;
-  let hasShownReloadPopup = false;
+  let hasShownPopupThisSession = false;
 
   document.getElementById('doseDate').valueAsDate = new Date();
 
@@ -554,7 +554,6 @@
     return `${cleanUser}@farmtracker.internal`;
   }
 
-  // Check Admin Privilege
   function checkIsAdmin(userEmail, displayName) {
     if (!userEmail) return false;
     const emailLower = userEmail.toLowerCase().trim();
@@ -576,7 +575,6 @@
       };
       document.getElementById('navUserName').innerText = loggedInUser.name;
       
-      // Admin Button visibility
       const adminBtn = document.getElementById('adminUserBtn');
       const adminBadge = document.getElementById('adminBadge');
       if (isAdmin) {
@@ -589,15 +587,18 @@
 
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('mainDashboard').style.display = 'block';
+
+      // Login thai gaya pachi reset ane connect karvu
+      hasShownPopupThisSession = false;
       initDataStream();
     } else {
       loggedInUser = null;
       document.getElementById('authScreen').style.display = 'flex';
       document.getElementById('mainDashboard').style.display = 'none';
+      document.getElementById('summaryModalOverlay').style.display = 'none';
     }
   });
 
-  // Login handler
   function processAuth() {
     const rawInput = document.getElementById('inpUsername').value.trim();
     const pin = document.getElementById('inpPin').value.trim();
@@ -615,7 +616,6 @@
 
     auth.signInWithEmailAndPassword(targetEmail, pin)
       .catch(err => {
-        // First-time fallback create for admin
         if (rawInput.toLowerCase() === 'admin' && pin === '999999' && err.code === 'auth/user-not-found') {
           auth.createUserWithEmailAndPassword(targetEmail, pin).then((cred) => {
             return cred.user.updateProfile({ displayName: 'Admin' });
@@ -633,7 +633,6 @@
       });
   }
 
-  // Admin add user modal
   function openAddUserModal() {
     document.getElementById('addUserModalOverlay').style.display = 'flex';
   }
@@ -672,7 +671,6 @@
       });
   }
 
-  // Change PIN Functions
   function openChangePinModal() {
     document.getElementById('changePinModalOverlay').style.display = 'flex';
   }
@@ -692,7 +690,6 @@
     const user = auth.currentUser;
     if (!user) return;
 
-    // Re-authenticate user before updating password
     const cred = firebase.auth.EmailAuthProvider.credential(user.email, cPin);
     user.reauthenticateWithCredential(cred)
       .then(() => {
@@ -718,6 +715,9 @@
   }
 
   function initDataStream() {
+    isPondsLoaded = false;
+    isRecordsLoaded = false;
+
     const connectedRef = db.ref(".info/connected");
     connectedRef.on("value", (snap) => {
       const dot = document.getElementById("cloudStatusDot");
@@ -759,11 +759,15 @@
 
   // ================= POPUP MODAL LOGIC =================
   function checkAndShowSummaryModal() {
-    if (!hasShownReloadPopup && isPondsLoaded && isRecordsLoaded && Object.keys(livePonds).length > 0) {
-      hasShownReloadPopup = true;
-      openSummaryModal();
-    } else if (hasShownReloadPopup && document.getElementById('summaryModalOverlay').style.display === 'flex') {
-      buildSummaryTable();
+    if (!loggedInUser) return;
+
+    if (isPondsLoaded && isRecordsLoaded && Object.keys(livePonds).length > 0) {
+      if (!hasShownPopupThisSession) {
+        hasShownPopupThisSession = true;
+        openSummaryModal();
+      } else if (document.getElementById('summaryModalOverlay').style.display === 'flex') {
+        buildSummaryTable();
+      }
     }
   }
 
